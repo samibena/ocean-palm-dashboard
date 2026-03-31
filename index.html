@@ -220,6 +220,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="tab" onclick="window.switchTab('travaux')">Travaux</div>
 <div class="tab" onclick="window.switchTab('ag')">AG</div>
 <div class="tab" onclick="window.switchTab('documents')">Documents</div>
+<div class="tab" onclick="window.switchTab('contacts')">Contacts</div>
 </div>
 
 <div class="main">
@@ -325,7 +326,22 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="section" id="sec-documents">
 <div class="card">
 <h3>Registre des documents <span><button class="btn btn-sm btn-primary" onclick="window.openDocModal()">+ Document</button></span></h3>
+<div class="filter-bar">
+<select id="docFilterCat" onchange="window.renderDocuments()"><option value="">Toutes catégories</option></select>
+</div>
 <div class="tbl-wrap"><table id="docTable"><thead></thead><tbody></tbody></table></div>
+</div>
+</div>
+
+<!-- CONTACTS -->
+<div class="section" id="sec-contacts">
+<div class="card">
+<h3>Contacts utiles <span><button class="btn btn-sm btn-primary" onclick="window.openContactModal()">+ Contact</button></span></h3>
+<div class="filter-bar">
+<select id="ctFilterCat" onchange="window.renderContacts()"><option value="">Toutes catégories</option><option value="Équipe syndic">Équipe syndic</option><option value="Fournisseur">Fournisseur</option><option value="Institutionnel">Institutionnel</option><option value="Urgences">Urgences</option><option value="Autre">Autre</option></select>
+<div class="search-box"><input type="text" id="ctSearch" placeholder="Rechercher un contact..." oninput="window.renderContacts()"></div>
+</div>
+<div class="tbl-wrap"><table id="contactTable"><thead></thead><tbody></tbody></table></div>
 </div>
 </div>
 </div>
@@ -369,9 +385,10 @@ if(!d.documents)d.documents=[];
 if(!d.rappels)d.rappels=[];
 if(!d.dismissedAlerts)d.dismissedAlerts=[];
 if(!d.bankAccounts)d.bankAccounts=[];
+if(!d.contacts)d.contacts=[];
 if(!d.budget)d.budget={previsionnel:2135063,consomme:1537460};
 // Ensure arrays
-['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts'].forEach(k=>{
+['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts'].forEach(k=>{
 if(!Array.isArray(d[k]))d[k]=Object.values(d[k]||{});
 });
 return d;
@@ -416,7 +433,7 @@ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
 const sec=document.getElementById('sec-'+id);
 if(sec)sec.classList.add('active');
 const tabs=document.querySelectorAll('.tab');
-const names=['overview','recouvrement','tresorerie','charges','fournisseurs','tickets','travaux','ag','documents'];
+const names=['overview','recouvrement','tresorerie','charges','fournisseurs','tickets','travaux','ag','documents','contacts'];
 const idx=names.indexOf(id);
 if(idx>=0&&tabs[idx])tabs[idx].classList.add('active');
 renderAll();
@@ -519,6 +536,22 @@ postes:[
 ]
 };
 
+const SEED_CONTACTS=[
+{id:'ct1',nom:'BENABDELHAMID',prenom:'Sami',fonction:'Président du Conseil Syndical',organisme:'Conseil Syndical Ocean Palm',categorie:'Équipe syndic',tel:'0600066686',email:'cs.oceanpalm@gmail.com',notes:''},
+{id:'ct2',nom:'LEBBADI',prenom:'Abdelkrim',fonction:'Vice-Président du Conseil Syndical',organisme:'Conseil Syndical Ocean Palm',categorie:'Équipe syndic',tel:'0661516675',email:'',notes:''},
+{id:'ct3',nom:'WAHID',prenom:'Abdelkbir',fonction:'Responsable Société de Gestion',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0690982077',email:'',notes:'Gestion opérationnelle du syndic'},
+{id:'ct4',nom:'FAKRAOUI',prenom:'Adil',fonction:'Responsable Finances & Comptabilité',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0660856338',email:'',notes:'Comptabilité, arrêtés des comptes, budget'},
+{id:'ct5',nom:'SIHM',prenom:'Tawfik',fonction:'Chef de site',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0663802489',email:'',notes:'Bureau du syndic — administratif et recouvrement'},
+{id:'ct6',nom:'BANGAL',prenom:'Yassine',fonction:'Responsable technique (terrain)',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0665095903',email:'',notes:'Interventions terrain, suivi travaux, maintenance'},
+{id:'ct7',nom:'BOUKHRAIS',prenom:'Yassine',fonction:'Responsable Gardiennage & Sécurité / Jardinage / Nettoyage',organisme:'White Hands',categorie:'Fournisseur',tel:'0661575330',email:'',notes:'Contact principal White Hands'},
+{id:'ct8',nom:'Attijariwafa Bank',prenom:'',fonction:'Banque',organisme:'AWB - Agence Casa My Idriss 1ER',categorie:'Institutionnel',tel:'0522865461',email:'',notes:'16 comptes syndic — 120 BD MY IDRISS 1ER CASA'},
+{id:'ct9',nom:'Pompiers Oulad Azzouz',prenom:'',fonction:'Secours / Incendie',organisme:'Protection Civile',categorie:'Urgences',tel:'0522961205',email:'',notes:'Caserne la plus proche de la résidence'},
+{id:'ct10',nom:'Gendarmerie Royale Dar Bouazza',prenom:'',fonction:'Sécurité / Gendarmerie',organisme:'Gendarmerie Royale',categorie:'Urgences',tel:'0522330986',email:'',notes:''},
+{id:'ct11',nom:'SAMU / Urgences',prenom:'',fonction:'Urgences médicales',organisme:'',categorie:'Urgences',tel:'150',email:'',notes:'Numéro national'},
+{id:'ct12',nom:'Police Secours',prenom:'',fonction:'Police',organisme:'',categorie:'Urgences',tel:'19',email:'',notes:'Numéro national'},
+{id:'ct13',nom:'Gendarmerie Royale',prenom:'',fonction:'Gendarmerie',organisme:'',categorie:'Urgences',tel:'177',email:'',notes:'Numéro national'}
+];
+
 
 // =================== RENDER FUNCTIONS ===================
 
@@ -532,6 +565,7 @@ renderTickets();
 renderTravaux();
 renderAG();
 renderDocuments();
+renderContacts();
 }
 window.renderAll=renderAll;
 
@@ -1136,6 +1170,63 @@ if(eid){const i=D.documents.findIndex(x=>x.id===eid);if(i>=0)D.documents[i]=data
 save();closeModal();renderAll();
 };
 
+// ---- CONTACTS ----
+function renderContacts(){
+const contacts=Array.isArray(D.contacts)?D.contacts:[];
+const catFilter=document.getElementById('ctFilterCat')?.value||'';
+const search=(document.getElementById('ctSearch')?.value||'').toLowerCase();
+
+let filtered=contacts;
+if(catFilter)filtered=filtered.filter(c=>c.categorie===catFilter);
+if(search)filtered=filtered.filter(c=>(c.nom||'').toLowerCase().includes(search)||(c.fonction||'').toLowerCase().includes(search)||(c.organisme||'').toLowerCase().includes(search)||(c.tel||'').includes(search));
+
+const thead=document.querySelector('#contactTable thead');
+const tbody=document.querySelector('#contactTable tbody');
+thead.innerHTML='<tr><th>Nom</th><th>Fonction</th><th>Organisme</th><th>Catégorie</th><th>Téléphone</th><th>Email</th><th>Notes</th><th>Actions</th></tr>';
+
+const sorted=[...filtered].sort((a,b)=>{
+const catOrder={'Équipe syndic':0,'Fournisseur':1,'Institutionnel':2,'Urgences':3,'Autre':4};
+const ca=catOrder[a.categorie]??9,cb=catOrder[b.categorie]??9;
+if(ca!==cb)return ca-cb;
+return(a.nom||'').localeCompare(b.nom||'');
+});
+
+tbody.innerHTML=sorted.map(c=>{
+const catTag=c.categorie==='Équipe syndic'?'tag-blue':c.categorie==='Fournisseur'?'tag-orange':c.categorie==='Institutionnel'?'tag-green':c.categorie==='Urgences'?'tag-red':'tag-gray';
+const telLink=c.tel?`<a href="tel:${c.tel.replace(/\s/g,'')}" style="color:var(--acc);text-decoration:none">${c.tel}</a>`:'-';
+const emailLink=c.email?`<a href="mailto:${c.email}" style="color:var(--acc);text-decoration:none">${c.email}</a>`:'-';
+return`<tr>
+<td style="font-weight:600;color:var(--tx)">${c.nom||'-'}${c.prenom?' '+c.prenom:''}</td>
+<td>${c.fonction||'-'}</td>
+<td>${c.organisme||'-'}</td>
+<td><span class="tag ${catTag}">${c.categorie||'-'}</span></td>
+<td>${telLink}</td>
+<td>${emailLink}</td>
+<td style="font-size:12px;color:var(--tx3);max-width:200px;white-space:normal">${c.notes||'-'}</td>
+<td><button class="btn btn-sm btn-secondary" onclick="window.editContact('${c.id}')">✏️</button></td>
+</tr>`;
+}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--tx3)">Aucun contact</td></tr>';
+}
+window.renderContacts=renderContacts;
+
+window.openContactModal=function(id){
+const c=id?(D.contacts||[]).find(x=>x.id===id):null;
+openModal(`<h3>${c?'Modifier':'Ajouter'} un contact</h3>
+<div class="form-row"><div class="form-group"><label>Nom</label><input id="mCtNom" value="${c?.nom||''}"></div><div class="form-group"><label>Prénom</label><input id="mCtPrenom" value="${c?.prenom||''}"></div></div>
+<div class="form-row"><div class="form-group"><label>Fonction / Rôle</label><input id="mCtFonction" value="${c?.fonction||''}"></div><div class="form-group"><label>Organisme</label><input id="mCtOrg" value="${c?.organisme||''}"></div></div>
+<div class="form-group"><label>Catégorie</label><select id="mCtCat"><option value="Équipe syndic" ${c?.categorie==='Équipe syndic'?'selected':''}>Équipe syndic</option><option value="Fournisseur" ${c?.categorie==='Fournisseur'?'selected':''}>Fournisseur</option><option value="Institutionnel" ${c?.categorie==='Institutionnel'?'selected':''}>Institutionnel</option><option value="Urgences" ${c?.categorie==='Urgences'?'selected':''}>Urgences</option><option value="Autre" ${c?.categorie==='Autre'?'selected':''}>Autre</option></select></div>
+<div class="form-row"><div class="form-group"><label>Téléphone</label><input id="mCtTel" value="${c?.tel||''}"></div><div class="form-group"><label>Email</label><input id="mCtEmail" value="${c?.email||''}"></div></div>
+<div class="form-group"><label>Notes</label><textarea id="mCtNotes">${c?.notes||''}</textarea></div>
+<div class="modal-actions">${c?`<button class="btn btn-danger" onclick="D.contacts=D.contacts.filter(x=>x.id!=='${c.id}');save();closeModal();renderAll();">Supprimer</button>`:''}<button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveContact('${c?.id||''}')">Enregistrer</button></div>`);
+};
+window.editContact=function(id){window.openContactModal(id);};
+window.saveContact=function(eid){
+if(!Array.isArray(D.contacts))D.contacts=[];
+const data={id:eid||uid(),nom:document.getElementById('mCtNom').value,prenom:document.getElementById('mCtPrenom').value,fonction:document.getElementById('mCtFonction').value,organisme:document.getElementById('mCtOrg').value,categorie:document.getElementById('mCtCat').value,tel:document.getElementById('mCtTel').value,email:document.getElementById('mCtEmail').value,notes:document.getElementById('mCtNotes').value};
+if(eid){const i=D.contacts.findIndex(x=>x.id===eid);if(i>=0)D.contacts[i]=data;}else D.contacts.push(data);
+save();closeModal();renderAll();
+};
+
 
 // =================== INIT ===================
 async function init(){
@@ -1152,11 +1243,14 @@ D.fournisseurs=SEED_FOURNISSEURS;
 D.charges=SEED_CHARGES;
 D.bankAccounts=SEED_BANKS;
 D.budget=BUDGET_2026;
+D.contacts=SEED_CONTACTS;
 D.documents=[
-{id:'doc1',nom:'Règlement de copropriété général',categorie:'Règlement copropriété',date:'2020-06-30',lien:''},
-{id:'doc2',nom:'Arrêté des comptes 31/12/2025',categorie:'Budget',date:'2025-12-31',lien:''},
-{id:'doc3',nom:'Projet budget 2026',categorie:'Budget',date:'2026-01-16',lien:''},
-{id:'doc4',nom:'Assurance AXA Multirisque',categorie:'Assurance',date:'2025-05-16',lien:''}
+{id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/?usp=sharing'},
+{id:'doc2',nom:'Règlement de copropriété général',categorie:'Règlement copropriété',date:'2020-06-30',lien:''},
+{id:'doc3',nom:'Arrêté des comptes 31/12/2025',categorie:'Budget',date:'2025-12-31',lien:''},
+{id:'doc4',nom:'Projet budget 2026',categorie:'Budget',date:'2026-01-16',lien:''},
+{id:'doc5',nom:'Assurance AXA Multirisque',categorie:'Assurance',date:'2025-05-16',lien:''},
+{id:'doc6',nom:'Modèle XLS — Saisie relevés bancaires',categorie:'Autre',date:'2026-03-31',lien:''}
 ];
 await save();
 console.log('Seed data saved to Firebase');
@@ -1170,6 +1264,7 @@ D.fournisseurs=SEED_FOURNISSEURS;
 D.charges=SEED_CHARGES;
 D.bankAccounts=SEED_BANKS;
 D.budget=BUDGET_2026;
+D.contacts=SEED_CONTACTS;
 document.getElementById('syncDot').classList.remove('ok');
 }
 renderAll();
