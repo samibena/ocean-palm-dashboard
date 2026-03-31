@@ -513,7 +513,7 @@ D.bankAccounts=SEED_BANKS;
 D.budget=BUDGET_2026;
 D.contacts=SEED_CONTACTS;
 D.ghRecap=SEED_GH_RECAP;
-D.documents=[{id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/?usp=sharing'}];
+D.documents=[{id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/1BmHWaWelO8YPY7oACOu8ehBQjlvNbZaf?usp=sharing'}];
 D.tickets=[];D.travaux=[];D.ags=[];D.rappels=[];D.mouvements=[];D.dismissedAlerts=[];
 await save();
 renderAll();
@@ -687,7 +687,8 @@ document.getElementById('healthFill').style.background=hColor;
 // KPIs
 document.getElementById('kpiGrid').innerHTML=`
 <div class="kpi"><div class="kpi-label">Solde bancaire total</div><div class="kpi-val ${soldeBanque<20000?'red':soldeBanque<80000?'orange':'green'}">${fmt(soldeBanque)} MAD</div><div class="kpi-sub">${banks.length} comptes · ${moisCouverts.toFixed(1)} mois de charges</div></div>
-<div class="kpi"><div class="kpi-label">Impayés copropriétaires</div><div class="kpi-val red">${fmt(totalSolde)} MAD</div><div class="kpi-sub">${debiteurs} débiteurs sur ${copros.length}</div></div>
+<div class="kpi"><div class="kpi-label">Impayés syndicat (tous GH)</div><div class="kpi-val red">${fmt(totalImpayes)} MAD</div><div class="kpi-sub">${ghRecapArr.length} GH · Source récap syndic</div></div>
+<div class="kpi"><div class="kpi-label">Impayés copros individuels</div><div class="kpi-val red">${fmt(totalSolde)} MAD</div><div class="kpi-sub">${debiteurs} débiteurs sur ${copros.length} (GH5→GH12)</div></div>
 <div class="kpi"><div class="kpi-label">Dettes fournisseurs</div><div class="kpi-val ${dettesFourns>0?'red':'green'}">${fmt(dettesFourns)} MAD</div><div class="kpi-sub">${fournsAll.filter(f=>(f.montantDu||0)>0).length} fournisseurs impayés</div></div>
 <div class="kpi"><div class="kpi-label">Taux de recouvrement 2026</div><div class="kpi-val ${tauxRecov>80?'green':tauxRecov>50?'orange':'red'}">${tauxRecov.toFixed(1)}%</div><div class="kpi-sub">${fmt(totalVers)} / ${fmt(totalAdf)} MAD</div></div>
 <div class="kpi"><div class="kpi-label">Budget 2026</div><div class="kpi-val">${fmt(D.budget?.previsionnel||0)} MAD</div><div class="kpi-sub">Consommé: ${fmt(D.budget?.consomme||0)}</div></div>
@@ -1479,7 +1480,7 @@ D.budget=BUDGET_2026;
 D.contacts=SEED_CONTACTS;
 D.ghRecap=SEED_GH_RECAP;
 D.documents=[
-{id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/?usp=sharing'}
+{id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/1BmHWaWelO8YPY7oACOu8ehBQjlvNbZaf?usp=sharing'}
 ];
 await save();
 console.log('Seed data saved to Firebase');
