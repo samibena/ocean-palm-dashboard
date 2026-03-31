@@ -239,7 +239,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="chart-card"><h4>Répartition des charges</h4><canvas id="chartCharges"></canvas></div>
 </div>
 <div class="card">
-<h3>Alertes & Rappels <span style="display:flex;gap:8px"><button class="btn btn-sm btn-secondary" onclick="window.resetAlerts()">Réafficher tout</button></span></h3>
+<h3>Alertes & Rappels <span style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="window.openRappelModal()">+ Rappel</button><button class="btn btn-sm btn-secondary" onclick="window.resetAlerts()">Réafficher tout</button></span></h3>
 <div id="alertsList"></div>
 </div>
 </div>
@@ -247,6 +247,10 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- RECOUVREMENT -->
 <div class="section" id="sec-recouvrement">
 <div class="kpi-grid" id="recovKpis"></div>
+<div class="card" style="margin-bottom:16px">
+<h3>Récapitulatif par GH <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Situation au 31/03/2026</span></h3>
+<div class="tbl-wrap"><table id="ghRecapTable"><thead></thead><tbody></tbody></table></div>
+</div>
 <div class="filter-bar">
 <select id="recFilterGH" onchange="window.renderRecouvrement()"><option value="">Tous les GH</option></select>
 <select id="recFilterStatut" onchange="window.renderRecouvrement()">
@@ -259,6 +263,8 @@ else{document.getElementById('lerr').style.display='block';}
 </select>
 <div class="search-box"><input type="text" id="recSearch" placeholder="Rechercher un copropriétaire..." oninput="window.renderRecouvrement()"></div>
 <button class="btn btn-primary btn-sm" onclick="window.openCoproModal()">+ Ajouter</button>
+<button class="btn btn-secondary btn-sm" onclick="document.getElementById('xlsxUpload').click()">📤 Importer XLSX</button>
+<input type="file" id="xlsxUpload" accept=".xlsx,.xls" style="display:none" onchange="window.importBalanceXLSX(this)">
 </div>
 <div class="card"><div class="tbl-wrap"><table id="recTable"><thead></thead><tbody></tbody></table></div></div>
 </div>
@@ -386,9 +392,10 @@ if(!d.rappels)d.rappels=[];
 if(!d.dismissedAlerts)d.dismissedAlerts=[];
 if(!d.bankAccounts)d.bankAccounts=[];
 if(!d.contacts)d.contacts=[];
+if(!d.ghRecap)d.ghRecap=[];
 if(!d.budget)d.budget={previsionnel:2135063,consomme:1537460};
 // Ensure arrays
-['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts'].forEach(k=>{
+['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts','ghRecap'].forEach(k=>{
 if(!Array.isArray(d[k]))d[k]=Object.values(d[k]||{});
 });
 return d;
@@ -525,6 +532,26 @@ const SEED_BANKS=[
 {id:'bk16',gh:'GH12',numero:'000304224',solde:32113.31,banque:'Attijariwafa Bank'}
 ];
 
+const SEED_GH_RECAP=[
+{gh:'GH1',cotisMens:15587,soldePrev:186633,cotisPeriode:46761,encArrieres:15587,encBudget:0,soldeRestant:217807,soldeArrieres:171046,soldeBudget:46761},
+{gh:'GH4',cotisMens:26553,soldePrev:238977,cotisPeriode:79659,encArrieres:26553,encBudget:0,soldeRestant:292083,soldeArrieres:212424,soldeBudget:79659},
+{gh:'GH5',cotisMens:4339,soldePrev:10126,cotisPeriode:13017,encArrieres:4100,encBudget:0,soldeRestant:19043,soldeArrieres:6026,soldeBudget:13017},
+{gh:'GH6',cotisMens:8464,soldePrev:53231,cotisPeriode:25392,encArrieres:14400,encBudget:0,soldeRestant:64223,soldeArrieres:38831,soldeBudget:25392},
+{gh:'GH7',cotisMens:4323,soldePrev:10497,cotisPeriode:12969,encArrieres:7100,encBudget:0,soldeRestant:16366,soldeArrieres:3397,soldeBudget:12969},
+{gh:'GH8',cotisMens:8431,soldePrev:30616,cotisPeriode:25293,encArrieres:10000,encBudget:0,soldeRestant:45909,soldeArrieres:20616,soldeBudget:25293},
+{gh:'GH9A',cotisMens:4124,soldePrev:13628,cotisPeriode:12372,encArrieres:8300,encBudget:0,soldeRestant:17700,soldeArrieres:5328,soldeBudget:12372},
+{gh:'GH9B',cotisMens:4124,soldePrev:5037,cotisPeriode:12372,encArrieres:5037,encBudget:4124,soldeRestant:8248,soldeArrieres:0,soldeBudget:8248},
+{gh:'GH9C',cotisMens:4124,soldePrev:4181,cotisPeriode:12372,encArrieres:4181,encBudget:4124,soldeRestant:8248,soldeArrieres:0,soldeBudget:8248},
+{gh:'GH10A',cotisMens:4141,soldePrev:-618,cotisPeriode:12423,encArrieres:-618,encBudget:9113,soldeRestant:3310,soldeArrieres:0,soldeBudget:3310},
+{gh:'GH10B',cotisMens:4124,soldePrev:22725,cotisPeriode:12372,encArrieres:13700,encBudget:0,soldeRestant:21397,soldeArrieres:9025,soldeBudget:12372},
+{gh:'GH10C',cotisMens:4124,soldePrev:9161,cotisPeriode:12372,encArrieres:5100,encBudget:0,soldeRestant:16433,soldeArrieres:4061,soldeBudget:12372},
+{gh:'GH11A',cotisMens:4124,soldePrev:20775,cotisPeriode:12372,encArrieres:7300,encBudget:0,soldeRestant:25847,soldeArrieres:13475,soldeBudget:12372},
+{gh:'GH11B',cotisMens:4124,soldePrev:7361,cotisPeriode:12372,encArrieres:7361,encBudget:4124,soldeRestant:8248,soldeArrieres:0,soldeBudget:8248},
+{gh:'GH11C',cotisMens:4141,soldePrev:10026,cotisPeriode:12423,encArrieres:9195,encBudget:0,soldeRestant:13254,soldeArrieres:831,soldeBudget:12423},
+{gh:'GH11D',cotisMens:4124,soldePrev:11263,cotisPeriode:12372,encArrieres:9005,encBudget:0,soldeRestant:14630,soldeArrieres:2258,soldeBudget:12372},
+{gh:'GH12',cotisMens:25804,soldePrev:169678,cotisPeriode:77412,encArrieres:59100,encBudget:0,soldeRestant:187990,soldeArrieres:110578,soldeBudget:77412}
+];
+
 const BUDGET_2026={
 previsionnel:2135063,
 postes:[
@@ -541,7 +568,7 @@ const SEED_CONTACTS=[
 {id:'ct2',nom:'LEBBADI',prenom:'Abdelkrim',fonction:'Vice-Président du Conseil Syndical',organisme:'Conseil Syndical Ocean Palm',categorie:'Équipe syndic',tel:'0661516675',email:'',notes:''},
 {id:'ct3',nom:'WAHID',prenom:'Abdelkbir',fonction:'Responsable Société de Gestion',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0690982077',email:'',notes:'Gestion opérationnelle du syndic'},
 {id:'ct4',nom:'FAKRAOUI',prenom:'Adil',fonction:'Responsable Finances & Comptabilité',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0660856338',email:'',notes:'Comptabilité, arrêtés des comptes, budget'},
-{id:'ct5',nom:'SIHM',prenom:'Tawfik',fonction:'Chef de site',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0663802489',email:'',notes:'Bureau du syndic — administratif et recouvrement'},
+{id:'ct5',nom:'(Poste vacant)',prenom:'',fonction:'Chef de site',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0663802489',email:'',notes:'Bureau du syndic — administratif et recouvrement. Recrutement en cours.'},
 {id:'ct6',nom:'BANGAL',prenom:'Yassine',fonction:'Responsable technique (terrain)',organisme:'Wayba Services',categorie:'Équipe syndic',tel:'0665095903',email:'',notes:'Interventions terrain, suivi travaux, maintenance'},
 {id:'ct7',nom:'BOUKHRAIS',prenom:'Yassine',fonction:'Responsable Gardiennage & Sécurité / Jardinage / Nettoyage',organisme:'White Hands',categorie:'Fournisseur',tel:'0661575330',email:'',notes:'Contact principal White Hands'},
 {id:'ct8',nom:'Attijariwafa Bank',prenom:'',fonction:'Banque',organisme:'AWB - Agence Casa My Idriss 1ER',categorie:'Institutionnel',tel:'0522865461',email:'',notes:'16 comptes syndic — 120 BD MY IDRISS 1ER CASA'},
@@ -1244,6 +1271,7 @@ D.charges=SEED_CHARGES;
 D.bankAccounts=SEED_BANKS;
 D.budget=BUDGET_2026;
 D.contacts=SEED_CONTACTS;
+D.ghRecap=SEED_GH_RECAP;
 D.documents=[
 {id:'doc1',nom:'📁 Dossier Google Drive — Documents Syndic',categorie:'Autre',date:'2026-03-31',lien:'https://drive.google.com/drive/folders/?usp=sharing'}
 ];
@@ -1260,6 +1288,7 @@ D.charges=SEED_CHARGES;
 D.bankAccounts=SEED_BANKS;
 D.budget=BUDGET_2026;
 D.contacts=SEED_CONTACTS;
+D.ghRecap=SEED_GH_RECAP;
 document.getElementById('syncDot').classList.remove('ok');
 }
 renderAll();
