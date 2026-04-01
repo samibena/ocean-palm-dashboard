@@ -383,6 +383,7 @@ const isAdmin=ROLE==='admin';
 const isGest=ROLE==='gestionnaire';
 const isMembre=ROLE==='membre';
 const canEdit=isAdmin||isGest;
+window.ROLE=ROLE;window.isAdmin=isAdmin;window.isGest=isGest;window.isMembre=isMembre;window.canEdit=canEdit;
 const openAccs=new Set();
 let sortStates={};
 let charts={};
