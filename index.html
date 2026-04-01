@@ -186,9 +186,11 @@ tr:hover td{background:var(--bg3)}
 
 <!-- PRE-MODULE LOGIN SCRIPT -->
 <script>
+const ROLES={oceanpalmadmin2026:'admin',oceanpalmgest2026:'gestionnaire',oceanpalmcs2026:'membre'};
 window.doLogin=function(){
-const PASS='oceanpalmcs2026';
-if(document.getElementById('pwd').value===PASS){sessionStorage.setItem('op_auth','1');location.reload();}
+const v=document.getElementById('pwd').value;
+const role=ROLES[v];
+if(role){sessionStorage.setItem('op_auth','1');sessionStorage.setItem('op_role',role);location.reload();}
 else{document.getElementById('lerr').style.display='block';}
 };
 </script>
@@ -201,16 +203,17 @@ else{document.getElementById('lerr').style.display='block';}
 <h1>Ocean Palm Dashboard</h1>
 </div>
 <div class="topbar-right">
+<span id="roleBadge" style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;margin-right:4px"></span>
 <div class="sync-dot" id="syncDot" title="Firebase sync"></div>
 <button class="btn-icon" onclick="window.toggleTheme()" title="Mode sombre/clair">🌓</button>
-<button class="btn-icon" onclick="window.exportJSON()" title="Export JSON">📥</button>
-<button class="btn-icon" onclick="document.getElementById('importFile').click()" title="Import JSON">📤</button>
+<button class="btn-icon" id="btnExportJSON" onclick="window.exportJSON()" title="Export JSON">📥</button>
+<button class="btn-icon" id="btnImportJSON" onclick="document.getElementById('importFile').click()" title="Import JSON">📤</button>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="window.importJSON(this)">
-<div style="position:relative;display:inline-block"><button class="btn-icon" onclick="window.toggleSettingsMenu()" title="Paramètres" style="font-size:13px;opacity:.7">⚙️</button>
+<div id="btnSettings" style="position:relative;display:inline-block"><button class="btn-icon" onclick="window.toggleSettingsMenu()" title="Paramètres" style="font-size:13px;opacity:.7">⚙️</button>
 <div id="settingsMenu" style="display:none;position:absolute;right:0;top:100%;margin-top:6px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:6px;min-width:220px;box-shadow:var(--shadow);z-index:150">
 <button class="btn btn-sm btn-danger" style="width:100%;text-align:left" onclick="window.resetAllData()">🔄 Réinitialiser les données</button>
 </div></div>
-<button class="btn-icon" onclick="sessionStorage.removeItem('op_auth');location.reload()" title="Déconnexion">🚪</button>
+<button class="btn-icon" onclick="sessionStorage.removeItem('op_auth');sessionStorage.removeItem('op_role');location.reload()" title="Déconnexion">🚪</button>
 </div>
 </div>
 
@@ -243,7 +246,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="chart-card"><h4>Répartition des charges</h4><canvas id="chartCharges"></canvas></div>
 </div>
 <div class="card">
-<h3>Alertes & Rappels <span style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="window.openRappelModal()">+ Rappel</button><button class="btn btn-sm btn-secondary" onclick="window.resetAlerts()">Réafficher tout</button></span></h3>
+<h3>Alertes & Rappels <span id="rappelActions" style="display:flex;gap:8px"></span></h3>
 <div id="alertsList"></div>
 </div>
 </div>
@@ -266,8 +269,7 @@ else{document.getElementById('lerr').style.display='block';}
 <option value="contentieux">90j+ / Contentieux</option>
 </select>
 <div class="search-box"><input type="text" id="recSearch" placeholder="Rechercher un copropriétaire..." oninput="window.renderRecouvrement()"></div>
-<button class="btn btn-primary btn-sm" onclick="window.openCoproModal()">+ Ajouter</button>
-<button class="btn btn-secondary btn-sm" onclick="document.getElementById('xlsxUpload').click()">📤 Importer XLSX</button>
+<span id="recActions"></span>
 <input type="file" id="xlsxUpload" accept=".xlsx,.xls" style="display:none" onchange="window.importBalanceXLSX(this)">
 </div>
 <div class="card"><div class="tbl-wrap"><table id="recTable"><thead></thead><tbody></tbody></table></div></div>
@@ -281,7 +283,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="chart-card"><h4>Soldes par GH (comptes bancaires)</h4><canvas id="chartGHBanks"></canvas></div>
 </div>
 <div class="card">
-<h3>Mouvements bancaires <span style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="window.openMvtModal()">+ Mouvement</button></span></h3>
+<h3>Mouvements bancaires <span id="mvtActions" style="display:flex;gap:8px"></span></h3>
 <div class="tbl-wrap"><table id="mvtTable"><thead></thead><tbody></tbody></table></div>
 </div>
 </div>
@@ -290,7 +292,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="section" id="sec-charges">
 <div class="kpi-grid" id="chargesKpis"></div>
 <div class="card">
-<h3>Dépenses <span style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="window.openChargeModal()">+ Dépense</button></span></h3>
+<h3>Dépenses <span id="chargeActions" style="display:flex;gap:8px"></span></h3>
 <div class="filter-bar"><select id="chFilterCat" onchange="window.renderCharges()"><option value="">Toutes catégories</option></select></div>
 <div class="tbl-wrap"><table id="chargesTable"><thead></thead><tbody></tbody></table></div>
 </div>
@@ -300,7 +302,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="section" id="sec-fournisseurs">
 <div class="kpi-grid" id="fournKpis"></div>
 <div class="card">
-<h3>Fournisseurs & Prestataires <span><button class="btn btn-sm btn-primary" onclick="window.openFournModal()">+ Fournisseur</button></span></h3>
+<h3>Fournisseurs & Prestataires <span id="fournActions"></span></h3>
 <div class="tbl-wrap"><table id="fournTable"><thead></thead><tbody></tbody></table></div>
 </div>
 </div>
@@ -311,7 +313,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="filter-bar">
 <select id="tickFilterStatut" onchange="window.renderTickets()"><option value="">Tous statuts</option><option value="ouvert">Ouvert</option><option value="en_cours">En cours</option><option value="attente">En attente fournisseur</option><option value="termine">Terminé</option></select>
 <select id="tickFilterAssigne" onchange="window.renderTickets()"><option value="">Tous assignés</option></select>
-<button class="btn btn-sm btn-primary" onclick="window.openTicketModal()">+ Nouveau ticket</button>
+<span id="tickActions"></span>
 </div>
 <div class="card"><div class="tbl-wrap"><table id="ticketTable"><thead></thead><tbody></tbody></table></div></div>
 </div>
@@ -319,7 +321,7 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- TRAVAUX -->
 <div class="section" id="sec-travaux">
 <div class="card">
-<h3>Travaux <span><button class="btn btn-sm btn-primary" onclick="window.openTravauxModal()">+ Travaux</button></span></h3>
+<h3>Travaux <span id="travauxActions"></span></h3>
 <div class="tbl-wrap"><table id="travauxTable"><thead></thead><tbody></tbody></table></div>
 </div>
 </div>
@@ -327,7 +329,7 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- AG -->
 <div class="section" id="sec-ag">
 <div class="card">
-<h3>Assemblées Générales <span><button class="btn btn-sm btn-primary" onclick="window.openAGModal()">+ AG</button></span></h3>
+<h3>Assemblées Générales <span id="agActions"></span></h3>
 <div id="agList"></div>
 </div>
 </div>
@@ -335,7 +337,7 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- DOCUMENTS -->
 <div class="section" id="sec-documents">
 <div class="card">
-<h3>Registre des documents <span><button class="btn btn-sm btn-primary" onclick="window.openDocModal()">+ Document</button></span></h3>
+<h3>Registre des documents <span id="docActions"></span></h3>
 <div class="filter-bar">
 <select id="docFilterCat" onchange="window.renderDocuments()"><option value="">Toutes catégories</option></select>
 </div>
@@ -346,7 +348,7 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- CONTACTS -->
 <div class="section" id="sec-contacts">
 <div class="card">
-<h3>Contacts utiles <span><button class="btn btn-sm btn-primary" onclick="window.openContactModal()">+ Contact</button></span></h3>
+<h3>Contacts utiles <span id="contactActions"></span></h3>
 <div class="filter-bar">
 <select id="ctFilterCat" onchange="window.renderContacts()"><option value="">Toutes catégories</option><option value="Équipe syndic">Équipe syndic</option><option value="Fournisseur">Fournisseur</option><option value="Institutionnel">Institutionnel</option><option value="Urgences">Urgences</option><option value="Autre">Autre</option></select>
 <div class="search-box"><input type="text" id="ctSearch" placeholder="Rechercher un contact..." oninput="window.renderContacts()"></div>
@@ -376,6 +378,11 @@ if(!sessionStorage.getItem('op_auth')){document.getElementById('app').style.disp
 else{document.getElementById('app').style.display='block';document.getElementById('loginWrap').style.display='none';init();}
 
 let D={};
+const ROLE=sessionStorage.getItem('op_role')||'membre';
+const isAdmin=ROLE==='admin';
+const isGest=ROLE==='gestionnaire';
+const isMembre=ROLE==='membre';
+const canEdit=isAdmin||isGest;
 const openAccs=new Set();
 let sortStates={};
 let charts={};
@@ -436,6 +443,23 @@ localStorage.setItem('op_theme',nxt);
 renderAll();
 };
 initTheme();
+
+// Role UI
+(function initRole(){
+const badge=document.getElementById('roleBadge');
+if(badge){
+const labels={admin:'🔑 Administrateur',gestionnaire:'🛠 Gestionnaire',membre:'👁 Consultation'};
+const colors={admin:'var(--accBg)',gestionnaire:'var(--oraBg)',membre:'var(--bluBg)'};
+const textColors={admin:'var(--acc)',gestionnaire:'var(--ora)',membre:'var(--blu)'};
+badge.textContent=labels[ROLE]||ROLE;
+badge.style.background=colors[ROLE]||'';
+badge.style.color=textColors[ROLE]||'';
+}
+if(!isAdmin){
+const hide=['btnExportJSON','btnImportJSON','btnSettings'];
+hide.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+}
+})();
 
 // Tabs
 window.switchTab=function(id){
@@ -734,6 +758,15 @@ const copros=Array.isArray(D.copros)?D.copros:[];
 const dismissed=new Set(Array.isArray(D.dismissedAlerts)?D.dismissedAlerts:[]);
 let alerts=[];
 
+// Role-based rappel buttons
+const rapAct=document.getElementById('rappelActions');
+if(rapAct){
+let btns='';
+if(canEdit)btns+=`<button class="btn btn-sm btn-primary" onclick="window.openRappelModal()">+ Rappel</button>`;
+if(isAdmin)btns+=`<button class="btn btn-sm btn-secondary" onclick="window.resetAlerts()">Réafficher tout</button>`;
+rapAct.innerHTML=btns;
+}
+
 // Impayés > 90j (contentieux)
 copros.filter(c=>(c.solde||0)>5000&&c.soldePrev>0).forEach(c=>{
 alerts.push({id:'imp_'+c.id,type:'urgent',text:`<strong>${c.name}</strong> (${c.gh}) — Impayé de ${fmt(c.solde)} MAD incluant arriérés`});
@@ -777,7 +810,11 @@ if(!visible.length){el.innerHTML='<p style="color:var(--tx3);font-size:13px;padd
 el.innerHTML=visible.map(a=>{
 const isRappel=a.id.startsWith('rap_');
 const rapId=isRappel?a.id.slice(4):'';
-return`<div class="alert-item ${a.type}"><div class="alert-text">${a.text}</div>${isRappel?`<button class="btn btn-sm btn-primary" style="white-space:nowrap;margin-right:4px" onclick="window.markRappelDone('${rapId}')">✓ Fait</button>`:''}${isRappel?`<button class="btn btn-sm btn-secondary" style="white-space:nowrap;margin-right:4px" onclick="window.openRappelModal('${rapId}')">✏️</button>`:''}<button class="alert-dismiss" onclick="window.dismissAlert('${a.id}')" title="Masquer">✕</button></div>`;
+let actions='';
+if(isRappel&&canEdit)actions+=`<button class="btn btn-sm btn-primary" style="white-space:nowrap;margin-right:4px" onclick="window.markRappelDone('${rapId}')">✓ Fait</button>`;
+if(isRappel&&isAdmin)actions+=`<button class="btn btn-sm btn-secondary" style="white-space:nowrap;margin-right:4px" onclick="window.openRappelModal('${rapId}')">✏️</button>`;
+if(canEdit)actions+=`<button class="alert-dismiss" onclick="window.dismissAlert('${a.id}')" title="Masquer">✕</button>`;
+return`<div class="alert-item ${a.type}"><div class="alert-text">${a.text}</div>${actions}</div>`;
 }).join('');
 }
 
@@ -802,7 +839,7 @@ openModal(`<h3>${r?'Modifier':'Ajouter'} un rappel</h3>
 <div class="form-row"><div class="form-group"><label>Date d'échéance</label><input type="date" id="mRapDate" value="${r?.date||new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Priorité</label><select id="mRapPrio"><option value="haute" ${r?.priorite==='haute'?'selected':''}>Haute</option><option value="moyenne" ${r?.priorite==='moyenne'?'selected':''}>Moyenne</option><option value="basse" ${r?.priorite==='basse'?'selected':''}>Basse</option></select></div></div>
 <div class="form-group"><label>Assigné à</label><select id="mRapAssigne"><option value="">— Non assigné —</option>${assigneOpts}</select></div>
-<div class="modal-actions">${r?`<button class="btn btn-danger" onclick="D.rappels=D.rappels.filter(x=>x.id!=='${r.id}');save();closeModal();renderAll();">Supprimer</button>`:''}<button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveRappel('${r?.id||''}')">Enregistrer</button></div>`);
+<div class="modal-actions">${r&&isAdmin?`<button class="btn btn-danger" onclick="D.rappels=D.rappels.filter(x=>x.id!=='${r.id}');save();closeModal();renderAll();">Supprimer</button>`:''}<button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveRappel('${r?.id||''}')">Enregistrer</button></div>`);
 };
 window.saveRappel=function(eid){
 if(!Array.isArray(D.rappels))D.rappels=[];
@@ -859,6 +896,13 @@ tbody.innerHTML=rows+totalRow;
 
 function renderRecouvrement(){
 renderGHRecap();
+// Role-based action buttons
+const recAct=document.getElementById('recActions');
+if(recAct){
+let btns='';
+if(isAdmin)btns+=`<button class="btn btn-primary btn-sm" onclick="window.openCoproModal()">+ Ajouter</button> <button class="btn btn-secondary btn-sm" onclick="document.getElementById('xlsxUpload').click()">📤 Importer XLSX</button>`;
+recAct.innerHTML=btns;
+}
 const copros=Array.isArray(D.copros)?D.copros:[];
 const ghFilter=document.getElementById('recFilterGH')?.value||'';
 const statutFilter=document.getElementById('recFilterStatut')?.value||'';
@@ -921,7 +965,7 @@ return`<tr>
 <td style="font-weight:700;color:${s>0?'var(--red)':'var(--grn)'}">${fmt(s)}</td>
 <td><span class="tag ${tagClass}">${tagText}</span> <span style="font-size:11px;color:var(--tx3)">${statutProcText}</span></td>
 <td style="font-size:12px">${c.phone||'-'}</td>
-<td><button class="btn btn-sm btn-secondary" onclick="window.editCopro('${c.id}')">✏️</button></td>
+<td>${isAdmin?`<button class="btn btn-sm btn-secondary" onclick="window.editCopro('${c.id}')">✏️</button>`:isGest?`<button class="btn btn-sm btn-secondary" onclick="window.editCoproVersement('${c.id}')">💰</button>`:''}</td>
 </tr>`;
 }).join('');
 renderGHRecap();
@@ -1030,6 +1074,29 @@ ${isEdit?`<button class="btn btn-danger" onclick="window.deleteCopro('${c.id}')"
 };
 window.editCopro=function(id){window.openCoproModal(id);};
 
+// Gestionnaire: modal simplifié pour saisir versement uniquement
+window.editCoproVersement=function(id){
+const c=(Array.isArray(D.copros)?D.copros:[]).find(x=>x.id===id);
+if(!c)return;
+openModal(`<h3>💰 Saisir versement — ${c.name}</h3>
+<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${c.gh} · Lot ${c.lot} · Solde actuel: <strong style="color:var(--red)">${fmt(c.solde)} MAD</strong></p>
+<div class="form-row">
+<div class="form-group"><label>Versements cumulés actuels</label><input id="mCVers" type="number" value="${c.vers||0}"></div>
+<div class="form-group"><label>Nouveau solde dû</label><input id="mCSolde" type="number" value="${c.solde||0}"></div>
+</div>
+<div class="form-group"><label>Dernière action</label><input id="mCAction" value="${c.lastAction||''}"></div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveCoproVersement('${c.id}')">Enregistrer</button></div>`);
+};
+window.saveCoproVersement=function(id){
+const idx=(D.copros||[]).findIndex(c=>c.id===id);
+if(idx<0)return;
+D.copros[idx].vers=parseFloat(document.getElementById('mCVers').value)||0;
+D.copros[idx].solde=parseFloat(document.getElementById('mCSolde').value)||0;
+D.copros[idx].lastAction=document.getElementById('mCAction').value;
+D.copros[idx].lastActionDate=new Date().toISOString().slice(0,10);
+save();closeModal();renderAll();
+};
+
 window.saveCoproEdit=function(existingId){
 if(!Array.isArray(D.copros))D.copros=[];
 const data={
@@ -1070,6 +1137,10 @@ const mvts=Array.isArray(D.mouvements)?D.mouvements:[];
 const totalCredits=mvts.filter(m=>m.type==='credit').reduce((s,m)=>s+(m.montant||0),0);
 const totalDebits=mvts.filter(m=>m.type==='debit').reduce((s,m)=>s+(m.montant||0),0);
 
+// Role-based buttons
+const mvtAct=document.getElementById('mvtActions');
+if(mvtAct)mvtAct.innerHTML=canEdit?`<button class="btn btn-sm btn-primary" onclick="window.openMvtModal()">+ Mouvement</button>`:'';
+
 document.getElementById('tresoKpis').innerHTML=`
 <div class="kpi"><div class="kpi-label">Solde total tous comptes</div><div class="kpi-val ${soldeBanque<20000?'red':'green'}">${fmt(soldeBanque)} MAD</div></div>
 <div class="kpi"><div class="kpi-label">Entrées (mouvements saisis)</div><div class="kpi-val green">${fmt(totalCredits)} MAD</div></div>
@@ -1094,7 +1165,7 @@ tbody.innerHTML=sorted.map(m=>`<tr>
 <td>${m.date||'-'}</td><td>${m.gh||'-'}</td><td>${m.libelle||'-'}</td>
 <td style="color:var(--red)">${m.type==='debit'?fmt(m.montant):''}</td>
 <td style="color:var(--grn)">${m.type==='credit'?fmt(m.montant):''}</td>
-<td><button class="btn btn-sm btn-secondary" onclick="window.editMvt('${m.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="window.deleteMvt('${m.id}')">🗑</button></td>
+<td>${canEdit?`<button class="btn btn-sm btn-secondary" onclick="window.editMvt('${m.id}')">✏️</button>`+` `+(isAdmin?`<button class="btn btn-sm btn-danger" onclick="window.deleteMvt('${m.id}')">🗑</button>`:``):''}</td>
 </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--tx3)">Aucun mouvement saisi</td></tr>';
 }
 
@@ -1126,6 +1197,10 @@ const charges=Array.isArray(D.charges)?D.charges:[];
 const totalCharges=charges.reduce((s,c)=>s+(c.montant||0),0);
 const cats=[...new Set(charges.map(c=>c.categorie))].sort();
 
+// Role-based buttons
+const chAct=document.getElementById('chargeActions');
+if(chAct)chAct.innerHTML=isAdmin?`<button class="btn btn-sm btn-primary" onclick="window.openChargeModal()">+ Dépense</button>`:'';
+
 const catSelect=document.getElementById('chFilterCat');
 if(catSelect&&catSelect.options.length<=1){
 cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSelect.appendChild(o);});
@@ -1142,7 +1217,7 @@ document.getElementById('chargesKpis').innerHTML=`
 const thead=document.querySelector('#chargesTable thead');
 const tbody=document.querySelector('#chargesTable tbody');
 thead.innerHTML='<tr><th>Date</th><th>Catégorie</th><th>Fournisseur</th><th>Description</th><th>Montant</th><th>Statut</th><th>Actions</th></tr>';
-tbody.innerHTML=filtered.map(c=>`<tr><td>${c.date||'-'}</td><td>${c.categorie||'-'}</td><td>${c.fournisseur||'-'}</td><td>${c.desc||'-'}</td><td style="font-weight:600">${fmt(c.montant)}</td><td><span class="tag ${c.statut==='payee'?'tag-green':c.statut==='en_attente'?'tag-orange':'tag-red'}">${c.statut==='payee'?'Payée':c.statut==='en_attente'?'En attente':'En retard'}</span></td><td><button class="btn btn-sm btn-secondary" onclick="window.editCharge('${c.id}')">✏️</button></td></tr>`).join('');
+tbody.innerHTML=filtered.map(c=>`<tr><td>${c.date||'-'}</td><td>${c.categorie||'-'}</td><td>${c.fournisseur||'-'}</td><td>${c.desc||'-'}</td><td style="font-weight:600">${fmt(c.montant)}</td><td><span class="tag ${c.statut==='payee'?'tag-green':c.statut==='en_attente'?'tag-orange':'tag-red'}">${c.statut==='payee'?'Payée':c.statut==='en_attente'?'En attente':'En retard'}</span></td><td>${isAdmin?`<button class="btn btn-sm btn-secondary" onclick="window.editCharge('${c.id}')">✏️</button>`:''}</td></tr>`).join('');
 }
 window.renderCharges=renderCharges;
 
@@ -1174,6 +1249,10 @@ const totalPaye=fourns.reduce((s,f)=>s+(f.montantPaye||0),0);
 const enRetard=fourns.filter(f=>(f.paiementStatut||'')==='en_retard'||(f.montantDu||0)>0).length;
 const aJour=fourns.filter(f=>(f.paiementStatut||'')==='a_jour'&&(f.montantDu||0)<=0).length;
 
+// Role-based buttons
+const fAct=document.getElementById('fournActions');
+if(fAct)fAct.innerHTML=isAdmin?`<button class="btn btn-sm btn-primary" onclick="window.openFournModal()">+ Fournisseur</button>`:'';
+
 document.getElementById('fournKpis').innerHTML=`
 <div class="kpi"><div class="kpi-label">Dettes fournisseurs</div><div class="kpi-val red">${fmt(totalDu)} MAD</div></div>
 <div class="kpi"><div class="kpi-label">Fournisseurs en retard</div><div class="kpi-val ${enRetard>0?'red':'green'}">${enRetard}</div></div>
@@ -1202,7 +1281,7 @@ return`<tr>
 <td>${f.dernierPaiement||'-'}</td>
 <td>${f.contratFin?'<span style="'+(contratExpire?'color:var(--red);font-weight:600':contratBientot?'color:var(--ora);font-weight:600':'')+'">'+f.contratFin+(contratExpire?' ⚠️ Expiré':contratBientot?' ⏰':'')+'</span>':'-'}</td>
 <td>${f.note?'⭐'.repeat(f.note):'-'}</td>
-<td><button class="btn btn-sm btn-secondary" onclick="window.editFourn('${f.id}')">✏️</button></td>
+<td>${isAdmin?`<button class="btn btn-sm btn-secondary" onclick="window.editFourn('${f.id}')">✏️</button>`:isGest?`<button class="btn btn-sm btn-secondary" onclick="window.editFournPaiement('${f.id}')">💰</button>`:''}</td>
 </tr>${f.commentairePaiement?'<tr><td colspan="9" style="padding:4px 12px 10px 12px;font-size:11px;color:var(--tx3);border-bottom:1px solid var(--bdr)">💬 '+f.commentairePaiement+'</td></tr>':''}`;
 }).join('');
 }
@@ -1222,6 +1301,28 @@ openModal(`<h3>${f?'Modifier':'Ajouter'} un fournisseur</h3>
 <div class="modal-actions">${f?`<button class="btn btn-danger" onclick="D.fournisseurs=D.fournisseurs.filter(x=>x.id!=='${f.id}');save();closeModal();renderAll();">Supprimer</button>`:''}<button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveFourn('${f?.id||''}')">Enregistrer</button></div>`);
 };
 window.editFourn=function(id){window.openFournModal(id);};
+
+// Gestionnaire: modal simplifié pour paiement fournisseur uniquement
+window.editFournPaiement=function(id){
+const f=(Array.isArray(D.fournisseurs)?D.fournisseurs:[]).find(x=>x.id===id);
+if(!f)return;
+openModal(`<h3>💰 Paiement — ${f.name}</h3>
+<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${f.specialite||''} · Dû: <strong style="color:var(--red)">${fmt(f.montantDu)} MAD</strong> · Payé: <strong style="color:var(--grn)">${fmt(f.montantPaye)} MAD</strong></p>
+<div class="form-row"><div class="form-group"><label>Montant dû (MAD)</label><input type="number" id="mFPDu" value="${f.montantDu||0}"></div><div class="form-group"><label>Montant payé (MAD)</label><input type="number" id="mFPPaye" value="${f.montantPaye||0}"></div></div>
+<div class="form-row"><div class="form-group"><label>Statut paiement</label><select id="mFPStatut"><option value="a_jour" ${f.paiementStatut==='a_jour'?'selected':''}>À jour</option><option value="partiel" ${f.paiementStatut==='partiel'?'selected':''}>Partiellement payé</option><option value="en_retard" ${f.paiementStatut==='en_retard'?'selected':''}>En retard</option></select></div><div class="form-group"><label>Date dernier paiement</label><input type="date" id="mFPDate" value="${f.dernierPaiement||''}"></div></div>
+<div class="form-group"><label>Commentaire</label><textarea id="mFPComm">${f.commentairePaiement||''}</textarea></div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.saveFournPaiement('${f.id}')">Enregistrer</button></div>`);
+};
+window.saveFournPaiement=function(id){
+const idx=(D.fournisseurs||[]).findIndex(f=>f.id===id);
+if(idx<0)return;
+D.fournisseurs[idx].montantDu=parseFloat(document.getElementById('mFPDu').value)||0;
+D.fournisseurs[idx].montantPaye=parseFloat(document.getElementById('mFPPaye').value)||0;
+D.fournisseurs[idx].paiementStatut=document.getElementById('mFPStatut').value;
+D.fournisseurs[idx].dernierPaiement=document.getElementById('mFPDate').value;
+D.fournisseurs[idx].commentairePaiement=document.getElementById('mFPComm').value;
+save();closeModal();renderAll();
+};
 window.saveFourn=function(eid){
 if(!Array.isArray(D.fournisseurs))D.fournisseurs=[];
 const data={id:eid||uid(),name:document.getElementById('mFName').value,specialite:document.getElementById('mFSpec').value,tel:document.getElementById('mFTel').value,email:document.getElementById('mFEmail').value,contratMontant:parseFloat(document.getElementById('mFContrat').value)||0,contratFin:document.getElementById('mFFin').value,montantDu:parseFloat(document.getElementById('mFDu').value)||0,montantPaye:parseFloat(document.getElementById('mFPaye').value)||0,paiementStatut:document.getElementById('mFPStatut').value,dernierPaiement:document.getElementById('mFDernierP').value,commentairePaiement:document.getElementById('mFCommP').value,note:parseInt(document.getElementById('mFNote').value)||3};
@@ -1234,6 +1335,10 @@ function renderTickets(){
 const tickets=Array.isArray(D.tickets)?D.tickets:[];
 const contacts=Array.isArray(D.contacts)?D.contacts:[];
 const equipe=contacts.filter(c=>c.categorie==='Équipe syndic');
+
+// Role-based buttons
+const tAct=document.getElementById('tickActions');
+if(tAct)tAct.innerHTML=canEdit?`<button class="btn btn-sm btn-primary" onclick="window.openTicketModal()">+ Nouveau ticket</button>`:'';
 
 // Populate assignee filter dynamically
 const assigneSelect=document.getElementById('tickFilterAssigne');
@@ -1269,7 +1374,7 @@ tbody.innerHTML=sorted.map(t=>{
 const isLate=(t.statut==='ouvert'||t.statut==='en_cours')&&t.deadline&&new Date(t.deadline)<new Date();
 const statutTag=t.statut==='ouvert'?'tag-orange':t.statut==='en_cours'?'tag-blue':t.statut==='termine'?'tag-green':'tag-gray';
 const prioTag=t.priorite==='haute'?'tag-red':t.priorite==='moyenne'?'tag-orange':'tag-gray';
-return`<tr><td>${t.numero||'-'}</td><td>${t.date||'-'}</td><td style="color:var(--tx);font-weight:500">${t.titre||'-'}</td><td>${t.categorie||'-'}</td><td><span class="tag ${prioTag}">${t.priorite||'-'}</span></td><td>${t.assigne||'-'}</td><td style="${isLate?'color:var(--red);font-weight:600':''}">${t.deadline||'-'}${isLate?' ⚠️':''}</td><td><span class="tag ${statutTag}">${t.statut||'-'}</span></td><td><button class="btn btn-sm btn-secondary" onclick="window.editTicket('${t.id}')">✏️</button></td></tr>`;
+return`<tr><td>${t.numero||'-'}</td><td>${t.date||'-'}</td><td style="color:var(--tx);font-weight:500">${t.titre||'-'}</td><td>${t.categorie||'-'}</td><td><span class="tag ${prioTag}">${t.priorite||'-'}</span></td><td>${t.assigne||'-'}</td><td style="${isLate?'color:var(--red);font-weight:600':''}">${t.deadline||'-'}${isLate?' ⚠️':''}</td><td><span class="tag ${statutTag}">${t.statut||'-'}</span></td><td>${canEdit?`<button class="btn btn-sm btn-secondary" onclick="window.editTicket('${t.id}')">✏️</button>`:''}</td></tr>`;
 }).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--tx3)">Aucun ticket</td></tr>';
 }
 window.renderTickets=renderTickets;
@@ -1304,12 +1409,15 @@ save();closeModal();renderAll();
 // ---- TRAVAUX ----
 function renderTravaux(){
 const travaux=Array.isArray(D.travaux)?D.travaux:[];
+// Role-based buttons
+const trAct=document.getElementById('travauxActions');
+if(trAct)trAct.innerHTML=canEdit?`<button class="btn btn-sm btn-primary" onclick="window.openTravauxModal()">+ Travaux</button>`:'';
 const thead=document.querySelector('#travauxTable thead');
 const tbody=document.querySelector('#travauxTable tbody');
 thead.innerHTML='<tr><th>Intitulé</th><th>Statut</th><th>Budget estimé</th><th>Coût réel</th><th>Fournisseur</th><th>Début</th><th>Fin</th><th>Actions</th></tr>';
 tbody.innerHTML=travaux.map(t=>{
 const sTag=t.statut==='termine'?'tag-green':t.statut==='en_cours'?'tag-blue':t.statut==='planifie'?'tag-orange':'tag-gray';
-return`<tr><td style="font-weight:500;color:var(--tx)">${t.intitule||'-'}</td><td><span class="tag ${sTag}">${t.statut||'-'}</span></td><td>${fmt(t.budgetEstime)}</td><td>${fmt(t.coutReel)}</td><td>${t.fournisseur||'-'}</td><td>${t.dateDebut||'-'}</td><td>${t.dateFin||'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="window.editTravaux('${t.id}')">✏️</button></td></tr>`;
+return`<tr><td style="font-weight:500;color:var(--tx)">${t.intitule||'-'}</td><td><span class="tag ${sTag}">${t.statut||'-'}</span></td><td>${fmt(t.budgetEstime)}</td><td>${fmt(t.coutReel)}</td><td>${t.fournisseur||'-'}</td><td>${t.dateDebut||'-'}</td><td>${t.dateFin||'-'}</td><td>${canEdit?`<button class="btn btn-sm btn-secondary" onclick="window.editTravaux('${t.id}')">✏️</button>`:''}</td></tr>`;
 }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--tx3)">Aucun travaux enregistré</td></tr>';
 }
 
@@ -1334,6 +1442,9 @@ save();closeModal();renderAll();
 // ---- AG ----
 function renderAG(){
 const ags=Array.isArray(D.ags)?D.ags:[];
+// Role-based buttons
+const agAct=document.getElementById('agActions');
+if(agAct)agAct.innerHTML=isAdmin?`<button class="btn btn-sm btn-primary" onclick="window.openAGModal()">+ AG</button>`:'';
 const el=document.getElementById('agList');
 if(!ags.length){el.innerHTML='<p style="color:var(--tx3);font-size:13px;padding:12px">Aucune AG enregistrée.</p>';return;}
 el.innerHTML=ags.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(a=>`
@@ -1344,7 +1455,7 @@ el.innerHTML=ags.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(a=>`
 <p style="font-size:13px;color:var(--tx2);margin-bottom:8px"><strong>Ordre du jour:</strong> ${a.ordre||'-'}</p>
 <p style="font-size:13px;color:var(--tx2);margin-bottom:8px"><strong>Décisions:</strong> ${a.decisions||'-'}</p>
 <p style="font-size:13px;color:var(--tx2)"><strong>Statut exécution:</strong> ${a.execution||'-'}</p>
-<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="window.editAG('${a.id}')">Modifier</button> <button class="btn btn-sm btn-danger" onclick="D.ags=D.ags.filter(x=>x.id!=='${a.id}');save();renderAll();">Supprimer</button></div>
+${isAdmin?`<div style="margin-top:10px"><button class="btn btn-sm btn-secondary" onclick="window.editAG('${a.id}')">Modifier</button> <button class="btn btn-sm btn-danger" onclick="D.ags=D.ags.filter(x=>x.id!=='${a.id}');save();renderAll();">Supprimer</button></div>`:''}
 </div>`).join('');
 }
 window.toggleAcc=function(id){if(openAccs.has(id))openAccs.delete(id);else openAccs.add(id);renderAll();};
@@ -1371,6 +1482,10 @@ save();closeModal();renderAll();
 function renderDocuments(){
 const docs=Array.isArray(D.documents)?D.documents:[];
 
+// Role-based buttons
+const docAct=document.getElementById('docActions');
+if(docAct)docAct.innerHTML=isAdmin?`<button class="btn btn-sm btn-primary" onclick="window.openDocModal()">+ Document</button>`:'';
+
 // Populate category filter dynamically
 const catSelect=document.getElementById('docFilterCat');
 if(catSelect){
@@ -1383,8 +1498,8 @@ const filtered=catFilter?docs.filter(d=>d.categorie===catFilter):docs;
 
 const thead=document.querySelector('#docTable thead');
 const tbody=document.querySelector('#docTable tbody');
-thead.innerHTML='<tr><th>Nom</th><th>Catégorie</th><th>Date</th><th>Lien</th><th>Actions</th></tr>';
-tbody.innerHTML=filtered.map(d=>`<tr><td style="font-weight:500;color:var(--tx)">${d.nom||'-'}</td><td>${d.categorie||'-'}</td><td>${d.date||'-'}</td><td>${d.lien?`<a href="${d.lien}" target="_blank" style="color:var(--acc)">Ouvrir</a>`:'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="window.editDoc('${d.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="D.documents=D.documents.filter(x=>x.id!=='${d.id}');save();renderAll();">🗑</button></td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--tx3)">Aucun document</td></tr>';
+thead.innerHTML='<tr><th>Nom</th><th>Catégorie</th><th>Date</th><th>Lien</th>'+(isAdmin?'<th>Actions</th>':'')+'</tr>';
+tbody.innerHTML=filtered.map(d=>`<tr><td style="font-weight:500;color:var(--tx)">${d.nom||'-'}</td><td>${d.categorie||'-'}</td><td>${d.date||'-'}</td><td>${d.lien?`<a href="${d.lien}" target="_blank" style="color:var(--acc)">Ouvrir</a>`:'-'}</td>${isAdmin?`<td><button class="btn btn-sm btn-secondary" onclick="window.editDoc('${d.id}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="D.documents=D.documents.filter(x=>x.id!=='${d.id}');save();renderAll();">🗑</button></td>`:''}</tr>`).join('')||'<tr><td colspan="'+(isAdmin?5:4)+'" style="text-align:center;color:var(--tx3)">Aucun document</td></tr>';
 }
 
 window.openDocModal=function(id){
@@ -1410,13 +1525,17 @@ const contacts=Array.isArray(D.contacts)?D.contacts:[];
 const catFilter=document.getElementById('ctFilterCat')?.value||'';
 const search=(document.getElementById('ctSearch')?.value||'').toLowerCase();
 
+// Role-based buttons
+const ctAct=document.getElementById('contactActions');
+if(ctAct)ctAct.innerHTML=isAdmin?`<button class="btn btn-sm btn-primary" onclick="window.openContactModal()">+ Contact</button>`:'';
+
 let filtered=contacts;
 if(catFilter)filtered=filtered.filter(c=>c.categorie===catFilter);
 if(search)filtered=filtered.filter(c=>(c.nom||'').toLowerCase().includes(search)||(c.fonction||'').toLowerCase().includes(search)||(c.organisme||'').toLowerCase().includes(search)||(c.tel||'').includes(search));
 
 const thead=document.querySelector('#contactTable thead');
 const tbody=document.querySelector('#contactTable tbody');
-thead.innerHTML='<tr><th>Nom</th><th>Fonction</th><th>Organisme</th><th>Catégorie</th><th>Téléphone</th><th>Email</th><th>Notes</th><th>Actions</th></tr>';
+thead.innerHTML='<tr><th>Nom</th><th>Fonction</th><th>Organisme</th><th>Catégorie</th><th>Téléphone</th><th>Email</th><th>Notes</th>'+(isAdmin?'<th>Actions</th>':'')+'</tr>';
 
 const sorted=[...filtered].sort((a,b)=>{
 const catOrder={'Équipe syndic':0,'Fournisseur':1,'Institutionnel':2,'Urgences':3,'Autre':4};
@@ -1437,9 +1556,9 @@ return`<tr>
 <td>${telLink}</td>
 <td>${emailLink}</td>
 <td style="font-size:12px;color:var(--tx3);max-width:280px;white-space:normal;line-height:1.4">${c.notes||'-'}</td>
-<td><button class="btn btn-sm btn-secondary" onclick="window.editContact('${c.id}')">✏️</button></td>
+${isAdmin?`<td><button class="btn btn-sm btn-secondary" onclick="window.editContact('${c.id}')">✏️</button></td>`:''}
 </tr>`;
-}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--tx3)">Aucun contact</td></tr>';
+}).join('')||'<tr><td colspan="'+(isAdmin?8:7)+'" style="text-align:center;color:var(--tx3)">Aucun contact</td></tr>';
 }
 window.renderContacts=renderContacts;
 
@@ -1514,10 +1633,13 @@ document.getElementById('syncDot').classList.remove('ok');
 }
 
 // Override doLogin for module context (no reload needed after init)
+const ROLES_MOD={oceanpalmadmin2026:'admin',oceanpalmgest2026:'gestionnaire',oceanpalmcs2026:'membre'};
 window.doLogin=function(){
-const PASS='oceanpalmcs2026';
-if(document.getElementById('pwd').value===PASS){
+const v=document.getElementById('pwd').value;
+const role=ROLES_MOD[v];
+if(role){
 sessionStorage.setItem('op_auth','1');
+sessionStorage.setItem('op_role',role);
 document.getElementById('loginWrap').style.display='none';
 document.getElementById('app').style.display='block';
 init();
