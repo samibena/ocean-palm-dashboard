@@ -378,11 +378,17 @@ if(!sessionStorage.getItem('op_auth')){document.getElementById('app').style.disp
 else{document.getElementById('app').style.display='block';document.getElementById('loginWrap').style.display='none';init();}
 
 let D={};
-const ROLE=sessionStorage.getItem('op_role')||'membre';
-const isAdmin=ROLE==='admin';
-const isGest=ROLE==='gestionnaire';
-const isMembre=ROLE==='membre';
-const canEdit=isAdmin||isGest;
+let ROLE=sessionStorage.getItem('op_role')||'membre';
+let isAdmin=ROLE==='admin';
+let isGest=ROLE==='gestionnaire';
+let isMembre=ROLE==='membre';
+let canEdit=isAdmin||isGest;
+function refreshRole(){
+ROLE=sessionStorage.getItem('op_role')||'membre';
+isAdmin=ROLE==='admin';isGest=ROLE==='gestionnaire';isMembre=ROLE==='membre';canEdit=isAdmin||isGest;
+window.ROLE=ROLE;window.isAdmin=isAdmin;window.isGest=isGest;window.isMembre=isMembre;window.canEdit=canEdit;
+}
+refreshRole();
 window.ROLE=ROLE;window.isAdmin=isAdmin;window.isGest=isGest;window.isMembre=isMembre;window.canEdit=canEdit;
 const openAccs=new Set();
 let sortStates={};
@@ -446,7 +452,8 @@ renderAll();
 initTheme();
 
 // Role UI
-(function initRole(){
+function updateRoleUI(){
+refreshRole();
 const badge=document.getElementById('roleBadge');
 if(badge){
 const labels={admin:'🔑 Administrateur',gestionnaire:'🛠 Gestionnaire',membre:'👁 Consultation'};
@@ -456,11 +463,10 @@ badge.textContent=labels[ROLE]||ROLE;
 badge.style.background=colors[ROLE]||'';
 badge.style.color=textColors[ROLE]||'';
 }
-if(!isAdmin){
-const hide=['btnExportJSON','btnImportJSON','btnSettings'];
-hide.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+const adminEls=['btnExportJSON','btnImportJSON','btnSettings'];
+adminEls.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
 }
-})();
+updateRoleUI();
 
 // Tabs
 window.switchTab=function(id){
@@ -643,6 +649,7 @@ const SEED_CONTACTS=[
 // =================== RENDER FUNCTIONS ===================
 
 function renderAll(){
+updateRoleUI();
 renderOverview();
 renderRecouvrement();
 renderTresorerie();
@@ -1641,6 +1648,7 @@ const role=ROLES_MOD[v];
 if(role){
 sessionStorage.setItem('op_auth','1');
 sessionStorage.setItem('op_role',role);
+refreshRole();
 document.getElementById('loginWrap').style.display='none';
 document.getElementById('app').style.display='block';
 init();
