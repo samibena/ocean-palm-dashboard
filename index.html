@@ -201,11 +201,11 @@ tr:hover td{background:var(--bg3)}
 <h2>Ocean Palm Dashboard</h2>
 <p>Syndic de la Résidence Palm Resort — Phase 1</p>
 <div class="pwd-wrap">
-<input type="text" id="pwd" placeholder="Mot de passe" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security:disc;text-security:disc" onkeydown="if(event.key==='Enter')window.doLogin()">
-<span class="pwd-eye" onclick="let p=document.getElementById('pwd');if(p.style.webkitTextSecurity==='disc'){p.style.webkitTextSecurity='none';this.textContent='🔒'}else{p.style.webkitTextSecurity='disc';this.textContent='👁'}">👁</span>
+<input type="text" id="pwd" placeholder="Code d'accès" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" aria-autocomplete="none" onfocus="this.style.webkitTextSecurity='disc';this.style.textSecurity='disc'" onkeydown="if(event.key==='Enter')window.doLogin()">
+<span class="pwd-eye" onclick="let p=document.getElementById('pwd');if(p.style.webkitTextSecurity==='disc'){p.style.webkitTextSecurity='none';p.style.textSecurity='none';this.textContent='🔒'}else{p.style.webkitTextSecurity='disc';p.style.textSecurity='disc';this.textContent='👁'}">👁</span>
 </div>
 <div id="lerr">Mot de passe incorrect</div>
-<button class="btn-login" onclick="window.doLogin()">Connexion</button>
+<button class="btn-login" onclick="window.doLogin()">Accéder</button>
 </div>
 </div>
 
