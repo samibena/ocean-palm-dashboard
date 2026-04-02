@@ -208,7 +208,7 @@ else{document.getElementById('lerr').style.display='block';}
 <span id="roleBadge" style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;margin-right:4px"></span>
 <div class="sync-dot" id="syncDot" title="Firebase sync"></div>
 <button class="btn-icon" onclick="window.toggleTheme()" title="Mode sombre/clair">🌓</button>
-<button class="btn-icon" id="btnExportJSON" onclick="window.exportJSON()" title="Export JSON">📥</button>
+<button class="btn-icon" id="btnExports" onclick="window.openExportModal()" title="Exports">📥</button>
 <button class="btn-icon" id="btnImportJSON" onclick="document.getElementById('importFile').click()" title="Import JSON">📤</button>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="window.importJSON(this)">
 <div id="btnSettings" style="position:relative;display:inline-block"><button class="btn-icon" onclick="window.toggleSettingsMenu()" title="Paramètres" style="font-size:13px;opacity:.7">⚙️</button>
@@ -465,8 +465,11 @@ badge.textContent=labels[ROLE]||ROLE;
 badge.style.background=colors[ROLE]||'';
 badge.style.color=textColors[ROLE]||'';
 }
-const adminEls=['btnExportJSON','btnImportJSON','btnSettings'];
-adminEls.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
+// Admin only: import JSON, settings/reset
+['btnImportJSON','btnSettings'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
+// Admin + Gestionnaire: exports button
+const btnExp=document.getElementById('btnExports');
+if(btnExp)btnExp.style.display=isMembre?'none':'';
 }
 updateRoleUI();
 
@@ -523,6 +526,153 @@ catch(e){alert('Erreur import: '+e.message);}
 r.readAsText(f);
 };
 
+// =================== EXPORT SYSTEM ===================
+const EXPORT_DEFS=[
+{id:'copros',label:'Recouvrement — Liste copropriétaires',roles:['admin','gestionnaire']},
+{id:'ghRecap',label:'Recouvrement — Récapitulatif par GH',roles:['admin','gestionnaire']},
+{id:'banques',label:'Trésorerie — Soldes comptes bancaires',roles:['admin']},
+{id:'mouvements',label:'Trésorerie — Mouvements bancaires',roles:['admin']},
+{id:'charges',label:'Charges — Liste des dépenses',roles:['admin']},
+{id:'fournisseurs',label:'Fournisseurs — Situation fournisseurs',roles:['admin','gestionnaire']},
+{id:'tickets',label:'Tickets — Liste des tickets',roles:['admin','gestionnaire']},
+{id:'travaux',label:'Travaux — Liste des travaux',roles:['admin','gestionnaire']},
+{id:'contacts',label:'Contacts — Annuaire',roles:['admin']},
+{id:'backup',label:'Backup complet (JSON)',roles:['admin']}
+];
+
+window.openExportModal=function(){
+if(isMembre){alert('Accès non autorisé.');return;}
+const available=EXPORT_DEFS.filter(e=>e.roles.includes(ROLE));
+const checksHtml=available.map(e=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--tx);cursor:pointer"><input type="checkbox" class="exp-check" value="${e.id}" style="width:16px;height:16px;accent-color:var(--acc)"> ${e.label}</label>`).join('');
+openModal(`<h3>📥 Exporter des données</h3>
+<div style="margin-bottom:16px">
+<label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:13px;font-weight:600;color:var(--acc);cursor:pointer;border-bottom:1px solid var(--bdr);margin-bottom:8px"><input type="checkbox" id="expSelectAll" onchange="document.querySelectorAll('.exp-check').forEach(c=>c.checked=this.checked)" style="width:16px;height:16px;accent-color:var(--acc)"> Tout sélectionner</label>
+${checksHtml}
+</div>
+<div style="margin-bottom:16px;padding-top:12px;border-top:1px solid var(--bdr)">
+<p style="font-size:12px;color:var(--tx3);margin-bottom:8px;font-weight:600">FORMAT D'EXPORT</p>
+<label style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;font-size:13px;color:var(--tx);cursor:pointer"><input type="radio" name="expFormat" value="xlsx" checked style="accent-color:var(--acc)"> XLSX (Excel)</label>
+<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx);cursor:pointer"><input type="radio" name="expFormat" value="pdf" style="accent-color:var(--acc)"> PDF</label>
+</div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="window.executeExport()">📥 Exporter</button></div>`);
+};
+
+window.executeExport=function(){
+const selected=[...document.querySelectorAll('.exp-check:checked')].map(c=>c.value);
+if(!selected.length){alert('Sélectionnez au moins un export.');return;}
+const format=document.querySelector('input[name="expFormat"]:checked')?.value||'xlsx';
+// Handle JSON backup separately
+if(selected.includes('backup')){
+window.exportJSON();
+if(selected.length===1){closeModal();return;}
+}
+const dataExports=selected.filter(s=>s!=='backup');
+if(!dataExports.length){closeModal();return;}
+if(format==='xlsx'){
+generateXLSXExports(dataExports);
+}else{
+generatePDFExports(dataExports);
+}
+closeModal();
+};
+
+function getExportData(id){
+const today=new Date().toLocaleDateString('fr-FR');
+const header={title:'Résidence Océan Palm — Palm Resort Phase 1',subtitle:'',date:today};
+switch(id){
+case 'copros':
+header.subtitle='Liste des copropriétaires — Recouvrement';
+return{header,cols:['Code','GH','Lot','Copropriétaire','Solde antérieur','ADF 2026','Versements','Solde dû','Statut','Téléphone'],
+rows:(Array.isArray(D.copros)?D.copros:[]).map(c=>[c.id,c.gh,c.lot,c.name,c.soldePrev||0,c.adf2026||0,c.vers||0,c.solde||0,c.statut||'-',c.phone||'-'])};
+case 'ghRecap':
+header.subtitle='Récapitulatif par GH — Situation au '+today;
+return{header,cols:['GH','Cotis. mensuelle','Solde antérieur','Cotisations période','Enc. arriérés','Enc. budget','Solde restant','dont Arriérés','dont Budget'],
+rows:(Array.isArray(D.ghRecap)?D.ghRecap:[]).map(g=>[g.gh,g.cotisMens||0,g.soldePrev||0,g.cotisPeriode||0,g.encArrieres||0,g.encBudget||0,g.soldeRestant||0,g.soldeArrieres||0,g.soldeBudget||0])};
+case 'banques':
+header.subtitle='Soldes des comptes bancaires';
+return{header,cols:['GH / Compte','N° Compte','Banque','Solde (MAD)'],
+rows:(Array.isArray(D.bankAccounts)?D.bankAccounts:[]).map(b=>[b.gh,b.numero,b.banque,b.solde||0])};
+case 'mouvements':
+header.subtitle='Mouvements bancaires';
+return{header,cols:['Date','GH / Compte','Libellé','Type','Montant (MAD)'],
+rows:(Array.isArray(D.mouvements)?D.mouvements:[]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(m=>[m.date||'-',m.gh||'-',m.libelle||'-',m.type==='credit'?'Crédit':'Débit',m.montant||0])};
+case 'charges':
+header.subtitle='Liste des dépenses';
+return{header,cols:['Date','Catégorie','Fournisseur','Description','Montant (MAD)','Statut'],
+rows:(Array.isArray(D.charges)?D.charges:[]).map(c=>[c.date||'-',c.categorie||'-',c.fournisseur||'-',c.desc||'-',c.montant||0,c.statut==='payee'?'Payée':c.statut==='en_attente'?'En attente':'En retard'])};
+case 'fournisseurs':
+header.subtitle='Situation des fournisseurs';
+return{header,cols:['Fournisseur','Spécialité','Montant dû','Montant payé','Statut','Dernier paiement','Fin contrat'],
+rows:(Array.isArray(D.fournisseurs)?D.fournisseurs:[]).sort((a,b)=>(b.montantDu||0)-(a.montantDu||0)).map(f=>[f.name,f.specialite||'-',f.montantDu||0,f.montantPaye||0,f.paiementStatut==='a_jour'?'À jour':f.paiementStatut==='partiel'?'Partiel':'En retard',f.dernierPaiement||'-',f.contratFin||'-'])};
+case 'tickets':
+header.subtitle='Liste des tickets';
+return{header,cols:['N°','Date','Titre','Catégorie','Priorité','Assigné','Deadline','Statut'],
+rows:(Array.isArray(D.tickets)?D.tickets:[]).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>[t.numero||'-',t.date||'-',t.titre||'-',t.categorie||'-',t.priorite||'-',t.assigne||'-',t.deadline||'-',t.statut||'-'])};
+case 'travaux':
+header.subtitle='Liste des travaux';
+return{header,cols:['Intitulé','Statut','Budget estimé','Coût réel','Fournisseur','Début','Fin'],
+rows:(Array.isArray(D.travaux)?D.travaux:[]).map(t=>[t.intitule||'-',t.statut||'-',t.budgetEstime||0,t.coutReel||0,t.fournisseur||'-',t.dateDebut||'-',t.dateFin||'-'])};
+case 'contacts':
+header.subtitle='Annuaire des contacts';
+return{header,cols:['Nom','Prénom','Fonction','Organisme','Catégorie','Téléphone','Email','Notes'],
+rows:(Array.isArray(D.contacts)?D.contacts:[]).map(c=>[c.nom||'-',c.prenom||'-',c.fonction||'-',c.organisme||'-',c.categorie||'-',c.tel||'-',c.email||'-',c.notes||'-'])};
+default:return null;
+}
+}
+
+function generateXLSXExports(ids){
+const wb=XLSX.utils.book_new();
+ids.forEach(id=>{
+const exp=getExportData(id);if(!exp)return;
+const wsData=[[exp.header.title],[''],['Date: '+exp.header.date],[exp.header.subtitle],[''],exp.cols,...exp.rows];
+const ws=XLSX.utils.aoa_to_sheet(wsData);
+// Style: merge title row
+ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:exp.cols.length-1}},{s:{r:2,c:0},e:{r:2,c:exp.cols.length-1}},{s:{r:3,c:0},e:{r:3,c:exp.cols.length-1}}];
+// Column widths
+ws['!cols']=exp.cols.map(c=>({wch:Math.max(c.length+2,14)}));
+const sheetName=(EXPORT_DEFS.find(e=>e.id===id)?.label||id).substring(0,31);
+XLSX.utils.book_append_sheet(wb,ws,sheetName);
+});
+const filename='OceanPalm_Export_'+new Date().toISOString().slice(0,10)+'.xlsx';
+XLSX.writeFile(wb,filename);
+}
+
+function generatePDFExports(ids){
+// Generate a printable HTML window for PDF
+let html=`<html><head><meta charset="UTF-8"><title>Export Ocean Palm</title><style>
+body{font-family:Arial,sans-serif;padding:20px;color:#333}
+.page{page-break-after:always;margin-bottom:40px}
+.page:last-child{page-break-after:auto}
+h1{font-size:18px;color:#1A5276;margin:0 0 4px 0}
+h2{font-size:14px;color:#2E86C1;margin:0 0 4px 0}
+.date{font-size:11px;color:#888;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+th{background:#1A5276;color:#fff;padding:6px 8px;text-align:left;font-weight:600}
+td{padding:5px 8px;border-bottom:1px solid #ddd}
+tr:nth-child(even) td{background:#f8f9fa}
+.footer{font-size:9px;color:#aaa;text-align:center;margin-top:20px}
+</style></head><body>`;
+ids.forEach(id=>{
+const exp=getExportData(id);if(!exp)return;
+html+=`<div class="page">`;
+html+=`<h1>${exp.header.title}</h1>`;
+html+=`<h2>${exp.header.subtitle}</h2>`;
+html+=`<div class="date">Exporté le ${exp.header.date}</div>`;
+html+=`<table><thead><tr>${exp.cols.map(c=>'<th>'+c+'</th>').join('')}</tr></thead><tbody>`;
+exp.rows.forEach(row=>{
+html+='<tr>'+row.map(v=>'<td>'+(typeof v==='number'?Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' '):v)+'</td>').join('')+'</tr>';
+});
+html+=`</tbody></table>`;
+html+=`<div class="footer">Ocean Palm Dashboard — Résidence Palm Resort Phase 1 — Dar Bouazza</div>`;
+html+=`</div>`;
+});
+html+=`</body></html>`;
+const w=window.open('','_blank');
+w.document.write(html);
+w.document.close();
+setTimeout(()=>{w.print();},500);
+}
+
 // Settings menu
 window.toggleSettingsMenu=function(){
 const m=document.getElementById('settingsMenu');
@@ -536,8 +686,25 @@ m.style.display='none';
 }
 });
 window.resetAllData=async function(){
-if(!confirm('⚠️ Réinitialiser TOUTES les données aux valeurs d\'origine ?\n\nCette action est irréversible.'))return;
+if(!isAdmin){alert('Accès réservé à l\'administrateur.');return;}
+if(!confirm('⚠️ Réinitialiser TOUTES les données aux valeurs d\'origine ?\n\nUne sauvegarde automatique sera créée avant la réinitialisation.'))return;
 if(!confirm('Dernière confirmation : êtes-vous sûr de vouloir écraser toutes les données ?'))return;
+// Auto-backup before reset
+try{
+const backupData=JSON.stringify(D,null,2);
+const blob=new Blob([backupData],{type:'application/json'});
+const backupName='OceanPalm_BACKUP_avant_reset_'+new Date().toISOString().slice(0,19).replace(/[:.]/g,'-')+'.json';
+// Download locally
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=backupName;a.click();
+// Upload to Google Drive shared folder
+try{
+const driveUrl='https://drive.google.com/drive/folders/1BmHWaWelO8YPY7oACOu8ehBQjlvNbZaf';
+window.open(driveUrl,'_blank');
+console.log('Backup saved: '+backupName+' — Please upload to Drive manually');
+}catch(de){console.log('Drive redirect skipped',de);}
+alert('Sauvegarde téléchargée : '+backupName+'\n\nPensez à l\'uploader dans le dossier Google Drive du syndic.');
+}catch(be){console.error('Backup error:',be);}
+// Proceed with reset
 D=ensureData({});
 D.copros=SEED_COPROS;
 D.fournisseurs=SEED_FOURNISSEURS;
