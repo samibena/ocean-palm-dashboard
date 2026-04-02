@@ -153,6 +153,28 @@ tr:hover td{background:var(--bg3)}
 .acc-body{display:none;padding:12px 16px;background:var(--bg2);border:1px solid var(--bdr);border-radius:0 0 8px 8px;margin-bottom:8px}
 .acc-body.open{display:block}
 
+/* Copro fiche */
+.fiche-header{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.fiche-stat{padding:12px;background:var(--bg3);border-radius:8px}
+.fiche-stat-label{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.fiche-stat-val{font-size:20px;font-weight:700}
+.timeline{position:relative;padding-left:24px;margin-top:12px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bdr)}
+.tl-item{position:relative;padding:12px 16px;background:var(--bg3);border-radius:8px;margin-bottom:10px;border-left:3px solid var(--acc)}
+.tl-item.tl-relance{border-left-color:var(--ora)}
+.tl-item.tl-med{border-left-color:var(--red)}
+.tl-item.tl-paiement{border-left-color:var(--grn)}
+.tl-item.tl-note{border-left-color:var(--blu)}
+.tl-item::before{content:'';position:absolute;left:-21px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--acc);border:2px solid var(--bg2)}
+.tl-item.tl-relance::before{background:var(--ora)}
+.tl-item.tl-med::before{background:var(--red)}
+.tl-item.tl-paiement::before{background:var(--grn)}
+.tl-item.tl-note::before{background:var(--blu)}
+.tl-date{font-size:11px;color:var(--tx3);margin-bottom:4px}
+.tl-type{font-size:12px;font-weight:600;margin-bottom:4px}
+.tl-desc{font-size:13px;color:var(--tx2)}
+.tl-by{font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic}
+
 /* Responsive */
 @media(max-width:768px){
 .kpi-grid{grid-template-columns:1fr 1fr}
@@ -293,6 +315,10 @@ else{document.getElementById('lerr').style.display='block';}
 <!-- CHARGES -->
 <div class="section" id="sec-charges">
 <div class="kpi-grid" id="chargesKpis"></div>
+<div class="card" style="margin-bottom:16px">
+<h3>Suivi budgétaire 2026 <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Budget vs Réel</span></h3>
+<div class="tbl-wrap"><table id="budgetTable"><thead></thead><tbody></tbody></table></div>
+</div>
 <div class="card">
 <h3>Dépenses <span id="chargeActions" style="display:flex;gap:8px"></span></h3>
 <div class="filter-bar"><select id="chFilterCat" onchange="window.renderCharges()"><option value="">Toutes catégories</option></select></div>
@@ -419,6 +445,13 @@ if(!d.lastBackup)d.lastBackup='';
 ['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts','ghRecap'].forEach(k=>{
 if(!Array.isArray(d[k]))d[k]=Object.values(d[k]||{});
 });
+// Ensure copro.actions arrays (Firestore converts nested arrays to objects)
+if(Array.isArray(d.copros)){
+d.copros.forEach(c=>{
+if(c.actions&&!Array.isArray(c.actions))c.actions=Object.values(c.actions);
+if(!c.actions)c.actions=[];
+});
+}
 return d;
 }
 
@@ -1150,7 +1183,7 @@ else if(s>0){tagClass='tag-blue';tagText='Retard 1-30j';}
 const statutProcText=c.statut||'-';
 return`<tr>
 <td>${c.id}</td><td>${c.gh}</td><td>${c.lot}</td>
-<td style="color:var(--tx);font-weight:500">${c.name}</td>
+<td style="color:var(--acc);font-weight:500;cursor:pointer;text-decoration:underline" onclick="window.openCoproFiche('${c.id}')">${c.name}</td>
 <td>${fmt(c.soldePrev)}</td><td>${fmt(c.adf2026)}</td><td>${fmt(c.vers)}</td>
 <td style="font-weight:700;color:${s>0?'var(--red)':'var(--grn)'}">${fmt(s)}</td>
 <td><span class="tag ${tagClass}">${tagText}</span> <span style="font-size:11px;color:var(--tx3)">${statutProcText}</span></td>
@@ -1287,6 +1320,97 @@ D.copros[idx].lastActionDate=new Date().toISOString().slice(0,10);
 save();closeModal();renderAll();
 };
 
+// ---- FICHE COPROPRIÉTAIRE + HISTORIQUE ACTIONS ----
+window.openCoproFiche=function(id){
+const c=(Array.isArray(D.copros)?D.copros:[]).find(x=>x.id===id);
+if(!c)return;
+if(!Array.isArray(c.actions))c.actions=[];
+const solde=c.solde||0;
+const soldeColor=solde>0?'var(--red)':'var(--grn)';
+const statutMap={'R1':'Relance 1','R2':'Relance 2','MED':'Mise en demeure','DR':'Dossier recouvrement','JUD':'Judiciaire','CR':'Créditeur','Soldé':'Soldé'};
+const statutText=statutMap[c.statut]||c.statut||'Aucun';
+const typeColors={'Appel':'tl-relance','Relance courrier':'tl-relance','Relance email':'tl-relance','Relance WhatsApp':'tl-relance','Mise en demeure':'tl-med','Passage terrain':'tl-note','Paiement reçu':'tl-paiement','Note interne':'tl-note','Dossier juridique':'tl-med','Autre':'tl-note'};
+
+const actionsSorted=[...c.actions].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+const timelineHtml=actionsSorted.length?actionsSorted.map(a=>{
+const cls=typeColors[a.type]||'tl-note';
+return`<div class="tl-item ${cls}">
+<div class="tl-date">${a.date||'-'}</div>
+<div class="tl-type">${a.type||'-'}</div>
+<div class="tl-desc">${a.desc||'-'}</div>
+${a.by?`<div class="tl-by">Par: ${a.by}</div>`:''}
+${isAdmin?`<button class="btn btn-sm btn-danger" style="margin-top:6px;padding:2px 8px;font-size:10px" onclick="window.deleteCoproAction('${c.id}','${a.id}')">Supprimer</button>`:''}
+</div>`;
+}).join(''):'<p style="color:var(--tx3);font-size:13px;padding:8px">Aucune action enregistrée.</p>';
+
+const addBtn=canEdit?`<button class="btn btn-primary btn-sm" onclick="window.openAddActionModal('${c.id}')">+ Nouvelle action</button>`:'';
+
+openModal(`<h3 style="display:flex;justify-content:space-between;align-items:center">📋 ${c.name} <span style="font-size:12px;font-weight:400;color:var(--tx3)">${c.id} · ${c.gh} · Lot ${c.lot}</span></h3>
+<div class="fiche-header">
+<div class="fiche-stat"><div class="fiche-stat-label">Solde dû</div><div class="fiche-stat-val" style="color:${soldeColor}">${fmt(solde)} MAD</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Statut procédure</div><div class="fiche-stat-val" style="font-size:16px">${statutText}</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Solde antérieur</div><div class="fiche-stat-val" style="font-size:16px">${fmt(c.soldePrev)} MAD</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Versements 2026</div><div class="fiche-stat-val" style="font-size:16px;color:var(--grn)">${fmt(c.vers)} MAD</div></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+${c.phone?`<a href="tel:${(c.phone||'').replace(/\\s/g,'')}" class="btn btn-sm btn-secondary" style="text-decoration:none">📞 ${c.phone}</a>`:''}
+</div>
+<h3 style="font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center">Historique des actions ${addBtn}</h3>
+<div class="timeline">${timelineHtml}</div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Fermer</button></div>`);
+};
+
+window.openAddActionModal=function(coproId){
+const contacts=Array.isArray(D.contacts)?D.contacts:[];
+const equipe=contacts.filter(c=>c.categorie==='Équipe syndic');
+const byOpts=equipe.map(c=>{const label=(c.nom||'')+(c.prenom?' '+c.prenom:'');return`<option value="${label.trim()}">${label.trim()}</option>`;}).join('');
+const types=['Appel','Relance courrier','Relance email','Relance WhatsApp','Mise en demeure','Passage terrain','Paiement reçu','Dossier juridique','Note interne','Autre'];
+const typeOpts=types.map(t=>`<option value="${t}">${t}</option>`).join('');
+
+openModal(`<h3>+ Nouvelle action</h3>
+<div class="form-row">
+<div class="form-group"><label>Date</label><input type="date" id="mActDate" value="${new Date().toISOString().slice(0,10)}"></div>
+<div class="form-group"><label>Type</label><select id="mActType">${typeOpts}</select></div>
+</div>
+<div class="form-group"><label>Description</label><textarea id="mActDesc" placeholder="Détail de l'action réalisée..."></textarea></div>
+<div class="form-group"><label>Réalisée par</label><select id="mActBy"><option value="">—</option>${byOpts}</select></div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="window.openCoproFiche('${coproId}')">← Retour</button><button class="btn btn-primary" onclick="window.saveCoproAction('${coproId}')">Enregistrer</button></div>`);
+};
+
+window.saveCoproAction=function(coproId){
+const idx=(D.copros||[]).findIndex(c=>c.id===coproId);
+if(idx<0)return;
+if(!Array.isArray(D.copros[idx].actions))D.copros[idx].actions=[];
+const actionType=document.getElementById('mActType').value;
+const action={
+id:uid(),
+date:document.getElementById('mActDate').value,
+type:actionType,
+desc:document.getElementById('mActDesc').value,
+by:document.getElementById('mActBy').value
+};
+D.copros[idx].actions.push(action);
+// Auto-update statut based on action type
+const statutMapping={'Mise en demeure':'MED','Dossier juridique':'DR'};
+if(statutMapping[actionType]){
+D.copros[idx].statut=statutMapping[actionType];
+}
+D.copros[idx].lastAction=actionType+': '+(action.desc||'').substring(0,50);
+D.copros[idx].lastActionDate=action.date;
+save();
+window.openCoproFiche(coproId);
+};
+
+window.deleteCoproAction=function(coproId,actionId){
+if(!confirm('Supprimer cette action ?'))return;
+const idx=(D.copros||[]).findIndex(c=>c.id===coproId);
+if(idx<0)return;
+if(!Array.isArray(D.copros[idx].actions))return;
+D.copros[idx].actions=D.copros[idx].actions.filter(a=>a.id!==actionId);
+save();
+window.openCoproFiche(coproId);
+};
+
 window.saveCoproEdit=function(existingId){
 if(!Array.isArray(D.copros))D.copros=[];
 const data={
@@ -1398,12 +1522,48 @@ cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textConten
 const catFilter=catSelect?.value||'';
 let filtered=catFilter?charges.filter(c=>c.categorie===catFilter):charges;
 
+// Dynamic budget tracking — calculate réel from charges per category
+const postes=BUDGET_2026.postes.map(p=>{
+const reel=charges.filter(c=>c.categorie===p.cat).reduce((s,c)=>s+(c.montant||0),0);
+const ecart=p.budget-reel;
+const pct=p.budget>0?Math.min(100,Math.round((reel/p.budget)*100)):0;
+return{...p,reel,ecart,pct};
+});
+const totalBudget=postes.reduce((s,p)=>s+p.budget,0);
+const totalReel=postes.reduce((s,p)=>s+p.reel,0);
+const totalEcart=totalBudget-totalReel;
+
 document.getElementById('chargesKpis').innerHTML=`
-<div class="kpi"><div class="kpi-label">Total charges</div><div class="kpi-val">${fmt(totalCharges)} MAD</div></div>
-<div class="kpi"><div class="kpi-label">Budget 2026</div><div class="kpi-val">${fmt(BUDGET_2026.previsionnel)} MAD</div></div>
-<div class="kpi"><div class="kpi-label">Écart</div><div class="kpi-val green">${fmt(BUDGET_2026.previsionnel-totalCharges)} MAD</div></div>
+<div class="kpi"><div class="kpi-label">Total dépenses</div><div class="kpi-val">${fmt(totalReel)} MAD</div></div>
+<div class="kpi"><div class="kpi-label">Budget 2026</div><div class="kpi-val">${fmt(totalBudget)} MAD</div></div>
+<div class="kpi"><div class="kpi-label">Écart restant</div><div class="kpi-val ${totalEcart>=0?'green':'red'}">${fmt(totalEcart)} MAD</div><div class="kpi-sub">${Math.round((totalReel/totalBudget)*100)}% consommé</div></div>
 `;
 
+// Budget table
+const bThead=document.querySelector('#budgetTable thead');
+const bTbody=document.querySelector('#budgetTable tbody');
+if(bThead&&bTbody){
+bThead.innerHTML='<tr><th>Poste</th><th>Budget</th><th>Réel</th><th>Écart</th><th>Consommation</th></tr>';
+bTbody.innerHTML=postes.map(p=>{
+const barColor=p.pct>100?'var(--red)':p.pct>80?'var(--ora)':'var(--acc)';
+const ecartColor=p.ecart>=0?'var(--grn)':'var(--red)';
+return`<tr>
+<td style="font-weight:500;color:var(--tx)">${p.cat}</td>
+<td>${fmt(p.budget)}</td>
+<td style="font-weight:600">${fmt(p.reel)}</td>
+<td style="color:${ecartColor};font-weight:600">${fmt(p.ecart)}</td>
+<td style="min-width:140px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.min(p.pct,100)}%;background:${barColor};border-radius:4px"></div></div><span style="font-size:11px;color:var(--tx3);min-width:35px">${p.pct}%</span></div></td>
+</tr>`;
+}).join('')+`<tr style="font-weight:700;border-top:2px solid var(--bdr);background:var(--bg3)">
+<td style="color:var(--tx)">TOTAL</td>
+<td>${fmt(totalBudget)}</td>
+<td>${fmt(totalReel)}</td>
+<td style="color:${totalEcart>=0?'var(--grn)':'var(--red)'}">${fmt(totalEcart)}</td>
+<td><span style="font-size:12px;font-weight:600;color:var(--tx)">${Math.round((totalReel/totalBudget)*100)}%</span></td>
+</tr>`;
+}
+
+// Charges table
 const thead=document.querySelector('#chargesTable thead');
 const tbody=document.querySelector('#chargesTable tbody');
 thead.innerHTML='<tr><th>Date</th><th>Catégorie</th><th>Fournisseur</th><th>Description</th><th>Montant</th><th>Statut</th><th>Actions</th></tr>';
@@ -1413,7 +1573,7 @@ window.renderCharges=renderCharges;
 
 window.openChargeModal=function(id){
 const c=id?(D.charges||[]).find(x=>x.id===id):null;
-const catList=['Gardiennage','Jardinage','Cantonnage','Honoraires Syndic','Électricité','Assurance','Petites réparations','Frais administratifs','Frais bancaires','Frais actes/procédures','Investissements','Autre'];
+const catList=['Gardiennage','Jardinage','Cantonnage','Honoraires Syndic','Électricité','Assurance','Petites réparations','Frais administratifs','Frais bancaires','Frais actes/procédures','Entretien 3D','Divers fonctionnement','Investissements','Provision gros travaux','Autre'];
 openModal(`<h3>${c?'Modifier':'Ajouter'} une dépense</h3>
 <div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="mChDate" value="${c?.date||new Date().toISOString().slice(0,10)}"></div>
 <div class="form-group"><label>Catégorie</label><select id="mChCat">${catList.map(x=>`<option ${c?.categorie===x?'selected':''}>${x}</option>`).join('')}</select></div></div>
