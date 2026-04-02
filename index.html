@@ -186,10 +186,12 @@ tr:hover td{background:var(--bg3)}
 
 <!-- PRE-MODULE LOGIN SCRIPT -->
 <script>
-const ROLES={oceanpalmadmin2026:'admin',oceanpalmgest2026:'gestionnaire',oceanpalmcs2026:'membre'};
-window.doLogin=function(){
+const ROLE_HASHES={'1201252379aa741bc547aa9dec9c5a2d3e07a46d6150ba952ea9ffde84e9410d':'admin','bab55211086f3c2f77a7df3841de13f02fabf2d22e198c489ce1e8ecf6957376':'gestionnaire','22f5ea7bfd65471bfec7f7238860771a3696ce82f7ff4d1c8069c9afaeda675f':'membre'};
+async function hashPwd(pwd){const enc=new TextEncoder().encode(pwd);const buf=await crypto.subtle.digest('SHA-256',enc);return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+window.doLogin=async function(){
 const v=document.getElementById('pwd').value;
-const role=ROLES[v];
+const h=await hashPwd(v);
+const role=ROLE_HASHES[h];
 if(role){sessionStorage.setItem('op_auth','1');sessionStorage.setItem('op_role',role);location.reload();}
 else{document.getElementById('lerr').style.display='block';}
 };
@@ -1641,10 +1643,12 @@ document.getElementById('syncDot').classList.remove('ok');
 }
 
 // Override doLogin for module context (no reload needed after init)
-const ROLES_MOD={oceanpalmadmin2026:'admin',oceanpalmgest2026:'gestionnaire',oceanpalmcs2026:'membre'};
-window.doLogin=function(){
+const ROLE_HASHES_MOD={'1201252379aa741bc547aa9dec9c5a2d3e07a46d6150ba952ea9ffde84e9410d':'admin','bab55211086f3c2f77a7df3841de13f02fabf2d22e198c489ce1e8ecf6957376':'gestionnaire','22f5ea7bfd65471bfec7f7238860771a3696ce82f7ff4d1c8069c9afaeda675f':'membre'};
+async function hashPwdMod(pwd){const enc=new TextEncoder().encode(pwd);const buf=await crypto.subtle.digest('SHA-256',enc);return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+window.doLogin=async function(){
 const v=document.getElementById('pwd').value;
-const role=ROLES_MOD[v];
+const h=await hashPwdMod(v);
+const role=ROLE_HASHES_MOD[h];
 if(role){
 sessionStorage.setItem('op_auth','1');
 sessionStorage.setItem('op_role',role);
