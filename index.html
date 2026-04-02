@@ -153,6 +153,9 @@ tr:hover td{background:var(--bg3)}
 .acc-body{display:none;padding:12px 16px;background:var(--bg2);border:1px solid var(--bdr);border-radius:0 0 8px 8px;margin-bottom:8px}
 .acc-body.open{display:block}
 
+/* Expandable sections */
+.exp-arrow{display:inline-block;width:16px;font-size:12px;color:var(--tx3);transition:transform .2s}
+
 /* Copro fiche */
 .fiche-header{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .fiche-stat{padding:12px;background:var(--bg3);border-radius:8px}
@@ -224,7 +227,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="topbar">
 <div class="topbar-left" onclick="window.switchTab('overview')" style="cursor:pointer">
 <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjYwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI2MCI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5sb2dvLWZpbGwgeyBmaWxsOiAjQzg5MzVBOyB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8IS0tIE91dGVyIG92YWwvY2Fwc3VsZSBzaGFwZSAtLT4KICA8ZWxsaXBzZSBjeD0iMTAwIiBjeT0iOTUiIHJ4PSI3MiIgcnk9IjkwIiBmaWxsPSJub25lIiBzdHJva2U9IiNDODkzNUEiIHN0cm9rZS13aWR0aD0iNSIvPgogIDwhLS0gUGFsbSB0cmVlIHRydW5rIC0tPgogIDxwYXRoIGQ9Ik0xMDAgMTcwIFE5OCAxNDAgMTAwIDExMCBRMTAyIDE0MCAxMDAgMTcwIiBzdHJva2U9IiNDODkzNUEiIHN0cm9rZS13aWR0aD0iNiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPCEtLSBQYWxtIGZyb25kcyAtIGxlZnQgLS0+CiAgPHBhdGggZD0iTTEwMCA4NSBRNzUgNjUgNTAgNzAiIHN0cm9rZT0iI0M4OTM1QSIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMTAwIDg1IFE3MCA3NSA0OCA4NSIgc3Ryb2tlPSIjQzg5MzVBIiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik0xMDAgODUgUTcyIDgyIDU1IDk1IiBzdHJva2U9IiNDODkzNUEiIHN0cm9rZS13aWR0aD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPCEtLSBQYWxtIGZyb25kcyAtIHJpZ2h0IC0tPgogIDxwYXRoIGQ9Ik0xMDAgODUgUTEyNSA2NSAxNTAgNzAiIHN0cm9rZT0iI0M4OTM1QSIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cGF0aCBkPSJNMTAwIDg1IFExMzAgNzUgMTUyIDg1IiBzdHJva2U9IiNDODkzNUEiIHN0cm9rZS13aWR0aD0iNCIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTEwMCA4NSBRMTI4IDgyIDE0NSA5NSIgc3Ryb2tlPSIjQzg5MzVBIiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gUGFsbSBmcm9uZCAtIHRvcCAtLT4KICA8cGF0aCBkPSJNMTAwIDg1IFE5NSA1NSA4NSA0NSIgc3Ryb2tlPSIjQzg5MzVBIiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik0xMDAgODUgUTEwNSA1NSAxMTUgNDUiIHN0cm9rZT0iI0M4OTM1QSIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIFdhdmVzIGF0IGJvdHRvbSBvZiBvdmFsIC0tPgogIDxwYXRoIGQ9Ik00NSAxNTUgUTYwIDE0NSA3NSAxNTUgUTkwIDE2NSAxMDUgMTU1IFExMjAgMTQ1IDEzNSAxNTUgUTE1MCAxNjUgMTU1IDE1NSIgc3Ryb2tlPSIjQzg5MzVBIiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxwYXRoIGQ9Ik01NSAxNjggUTcwIDE1OCA4NSAxNjggUTEwMCAxNzggMTE1IDE2OCBRMTMwIDE1OCAxNDUgMTY4IiBzdHJva2U9IiNDODkzNUEiIHN0cm9rZS13aWR0aD0iMy41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIFRleHQgT0NFQU4gUEFMTSAtLT4KICA8dGV4dCB4PSIxMDAiIHk9IjIxNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IidTZWdvZSBVSScsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwIiBmb250LXdlaWdodD0iNzAwIiBsZXR0ZXItc3BhY2luZz0iNSIgZmlsbD0iI0M4OTM1QSI+T0NFQU48L3RleHQ+CiAgPHRleHQgeD0iMTAwIiB5PSIyNDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSInU2Vnb2UgVUknLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9IjcwMCIgbGV0dGVyLXNwYWNpbmc9IjUiIGZpbGw9IiNDODkzNUEiPlBBTE08L3RleHQ+Cjwvc3ZnPg==" alt="OP">
-<h1>Ocean Palm Dashboard</h1>
+<h1>Ocean Palm Dashboard <span id="appVersion" style="font-size:10px;font-weight:400;color:var(--tx3);background:var(--bg4);padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px"></span></h1>
 </div>
 <div class="topbar-right">
 <span id="roleBadge" style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;margin-right:4px"></span>
@@ -279,8 +282,8 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="section" id="sec-recouvrement">
 <div class="kpi-grid" id="recovKpis"></div>
 <div class="card" style="margin-bottom:16px">
-<h3>Récapitulatif par GH <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Situation au 31/03/2026</span></h3>
-<div class="tbl-wrap"><table id="ghRecapTable"><thead></thead><tbody></tbody></table></div>
+<h3 style="cursor:pointer" onclick="const b=document.getElementById('ghRecapBody');b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.exp-arrow').textContent=b.style.display==='none'?'▶':'▼'"><span class="exp-arrow">▼</span> Récapitulatif par GH <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Situation au 31/03/2026</span></h3>
+<div id="ghRecapBody"><div class="tbl-wrap"><table id="ghRecapTable"><thead></thead><tbody></tbody></table></div></div>
 </div>
 <div class="filter-bar">
 <select id="recFilterGH" onchange="window.renderRecouvrement()"><option value="">Tous les GH</option></select>
@@ -316,8 +319,8 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="section" id="sec-charges">
 <div class="kpi-grid" id="chargesKpis"></div>
 <div class="card" style="margin-bottom:16px">
-<h3>Suivi budgétaire 2026 <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Budget vs Réel</span></h3>
-<div class="tbl-wrap"><table id="budgetTable"><thead></thead><tbody></tbody></table></div>
+<h3 style="cursor:pointer" onclick="const b=document.getElementById('budgetBody');b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.exp-arrow').textContent=b.style.display==='none'?'▶':'▼'"><span class="exp-arrow">▼</span> Suivi budgétaire 2026 <span style="font-size:12px;font-weight:400;color:var(--tx3)">— Budget vs Réel</span></h3>
+<div id="budgetBody"><div class="tbl-wrap"><table id="budgetTable"><thead></thead><tbody></tbody></table></div></div>
 </div>
 <div class="card">
 <h3>Dépenses <span id="chargeActions" style="display:flex;gap:8px"></span></h3>
@@ -421,6 +424,9 @@ window.ROLE=ROLE;window.isAdmin=isAdmin;window.isGest=isGest;window.isMembre=isM
 const openAccs=new Set();
 let sortStates={};
 let charts={};
+
+const APP_VERSION='3.0';
+document.getElementById('appVersion').textContent='v'+APP_VERSION;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
 
