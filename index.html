@@ -414,6 +414,7 @@ if(!d.bankAccounts)d.bankAccounts=[];
 if(!d.contacts)d.contacts=[];
 if(!d.ghRecap)d.ghRecap=[];
 if(!d.budget)d.budget={previsionnel:2135063,consomme:1537460};
+if(!d.lastBackup)d.lastBackup='';
 // Ensure arrays
 ['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts','ghRecap'].forEach(k=>{
 if(!Array.isArray(d[k]))d[k]=Object.values(d[k]||{});
@@ -515,6 +516,8 @@ const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
 const a=document.createElement('a');a.href=URL.createObjectURL(blob);
 a.download='ocean-palm-backup-'+new Date().toISOString().slice(0,10)+'.json';
 a.click();
+D.lastBackup=new Date().toISOString().slice(0,10);
+save();
 };
 window.importJSON=function(input){
 const f=input.files[0];if(!f)return;
@@ -973,6 +976,16 @@ const in30=new Date();in30.setDate(in30.getDate()+30);
 fourns.filter(f=>f.contratFin&&new Date(f.contratFin)<=in30&&new Date(f.contratFin)>=new Date()).forEach(f=>{
 alerts.push({id:'ctr_'+f.id,type:'info',text:`Contrat <strong>${f.name}</strong> expire le ${f.contratFin}`});
 });
+
+// Rappel sauvegarde bimensuelle (admin uniquement)
+if(isAdmin){
+const lastBk=D.lastBackup?new Date(D.lastBackup):null;
+const daysSinceBackup=lastBk?Math.floor((new Date()-lastBk)/(1000*60*60*24)):999;
+if(daysSinceBackup>=15){
+const msg=lastBk?`Aucune sauvegarde depuis <strong>${daysSinceBackup} jours</strong> (dernière: ${D.lastBackup})`:`<strong>Aucune sauvegarde enregistrée</strong>`;
+alerts.push({id:'backup_reminder',type:'urgent',text:`💾 ${msg} — <a href="#" onclick="window.openExportModal();return false" style="color:var(--acc);text-decoration:underline">Exporter maintenant</a>`});
+}
+}
 
 // Rappels manuels
 const rappels=Array.isArray(D.rappels)?D.rappels:[];
