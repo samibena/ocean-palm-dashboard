@@ -273,8 +273,8 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="chart-card"><h4>Répartition des charges</h4><canvas id="chartCharges"></canvas></div>
 </div>
 <div class="card">
-<h3>Alertes & Rappels <span id="rappelActions" style="display:flex;gap:8px"></span></h3>
-<div id="alertsList"></div>
+<h3 style="cursor:pointer" onclick="const b=document.getElementById('alertsBody');b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.exp-arrow').textContent=b.style.display==='none'?'▶':'▼'"><span class="exp-arrow">▼</span> Alertes & Rappels <span id="rappelActions" style="display:flex;gap:8px"></span></h3>
+<div id="alertsBody"><div id="alertsList"></div></div>
 </div>
 </div>
 
