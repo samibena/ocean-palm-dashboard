@@ -234,6 +234,7 @@ else{document.getElementById('lerr').style.display='block';}
 <div class="sync-dot" id="syncDot" title="Firebase sync"></div>
 <button class="btn-icon" onclick="window.toggleTheme()" title="Mode sombre/clair">🌓</button>
 <button class="btn-icon" id="btnExports" onclick="window.openExportModal()" title="Exports">📥</button>
+<button class="btn-icon" id="btnSuggestions" onclick="window.openSuggestionsModal()" title="Suggestions">💡</button>
 <button class="btn-icon" id="btnImportJSON" onclick="document.getElementById('importFile').click()" title="Import JSON">📤</button>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="window.importJSON(this)">
 <div id="btnSettings" style="position:relative;display:inline-block"><button class="btn-icon" onclick="window.toggleSettingsMenu()" title="Paramètres" style="font-size:13px;opacity:.7">⚙️</button>
@@ -425,8 +426,9 @@ const openAccs=new Set();
 let sortStates={};
 let charts={};
 
-const APP_VERSION='3.1';
+const APP_VERSION='3.2';
 const CHANGELOG=[
+{v:'3.2',date:'02/04/2026',type:'minor',changes:['Système de suggestions d\'amélioration (Admin + Gestionnaire)','Bouton 💡 dans la topbar','Gestion des suggestions : nouveau, lu, traité','Réponses admin aux suggestions']},
 {v:'3.1',date:'02/04/2026',type:'minor',changes:['Sections expandables (GH Recap, Budget, Alertes)','Fix détection mot de passe Chrome','Numéro de version dynamique dans la topbar','Changelog accessible par clic sur la version']},
 {v:'3.0',date:'02/04/2026',type:'major',changes:['Fiches copropriétaires avec historique d\'actions (timeline)','Suivi budgétaire 2026 dynamique (budget vs réel par poste)','Types d\'actions : Appel, Relance, Mise en demeure, Paiement, etc.','Mise à jour auto du statut procédure selon les actions']},
 {v:'2.3',date:'02/04/2026',type:'minor',changes:['Rappel de sauvegarde bimensuel (alerte admin)']},
@@ -460,6 +462,99 @@ openModal(`<h3>📋 Changelog — Historique des versions</h3>
 };
 document.getElementById('appVersion').textContent='v'+APP_VERSION;
 
+// =================== SUGGESTIONS ===================
+window.openSuggestionsModal=function(){
+if(isMembre)return;
+const suggestions=Array.isArray(D.suggestions)?D.suggestions:[];
+const sorted=[...suggestions].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+const filtered=isAdmin?sorted:sorted.filter(s=>s.auteur===ROLE);
+
+const listHtml=filtered.length?filtered.map(s=>{
+const prioTag=s.priorite==='haute'?'tag-red':s.priorite==='moyenne'?'tag-orange':'tag-blue';
+const statutTag=s.statut==='traite'?'tag-green':s.statut==='lu'?'tag-blue':'tag-orange';
+const statutText=s.statut==='traite'?'Traité':s.statut==='lu'?'Lu':'Nouveau';
+return`<div style="padding:12px;background:var(--bg3);border-radius:8px;margin-bottom:8px;border-left:3px solid ${s.statut==='traite'?'var(--grn)':s.statut==='lu'?'var(--blu)':'var(--ora)'}">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+<div style="display:flex;align-items:center;gap:6px">
+<span class="tag ${prioTag}" style="font-size:10px">${s.priorite||'normale'}</span>
+<span class="tag ${statutTag}" style="font-size:10px">${statutText}</span>
+<span style="font-size:11px;color:var(--tx3)">${s.date||'-'}</span>
+</div>
+${isAdmin?`<div style="display:flex;gap:4px">
+${s.statut!=='lu'?`<button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:10px" onclick="window.markSuggestion('${s.id}','lu')">👁 Lu</button>`:''}
+${s.statut!=='traite'?`<button class="btn btn-sm btn-primary" style="padding:2px 8px;font-size:10px" onclick="window.markSuggestion('${s.id}','traite')">✓ Traité</button>`:''}
+<button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:10px" onclick="window.deleteSuggestion('${s.id}')">🗑</button>
+</div>`:''}
+</div>
+<div style="font-size:13px;color:var(--tx)">${s.text}</div>
+${s.auteurNom?`<div style="font-size:11px;color:var(--tx3);margin-top:4px;font-style:italic">Par: ${s.auteurNom}</div>`:''}
+${s.reponse?`<div style="font-size:12px;color:var(--acc);margin-top:6px;padding:8px;background:var(--accBg);border-radius:6px">💬 ${s.reponse}</div>`:''}
+${isAdmin&&!s.reponse?`<button class="btn btn-sm btn-secondary" style="margin-top:6px;padding:2px 8px;font-size:10px" onclick="window.replyToSuggestion('${s.id}')">Répondre</button>`:''}
+</div>`;
+}).join(''):'<p style="color:var(--tx3);font-size:13px;padding:12px">Aucune suggestion pour le moment.</p>';
+
+const newCount=suggestions.filter(s=>s.statut==='nouveau').length;
+const badge=newCount>0?` <span style="background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:8px">${newCount}</span>`:'';
+
+openModal(`<h3>💡 Suggestions d'amélioration${badge}</h3>
+<div style="max-height:55vh;overflow-y:auto;margin-bottom:12px">${listHtml}</div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Fermer</button><button class="btn btn-primary" onclick="window.openNewSuggestionModal()">+ Nouvelle suggestion</button></div>`);
+};
+
+window.openNewSuggestionModal=function(){
+openModal(`<h3>💡 Proposer une amélioration</h3>
+<div class="form-group"><label>Description de la suggestion</label><textarea id="mSugText" placeholder="Décrivez votre idée d'amélioration..." style="min-height:100px"></textarea></div>
+<div class="form-group"><label>Priorité</label><select id="mSugPrio"><option value="basse">Basse — confort</option><option value="moyenne" selected>Moyenne — utile</option><option value="haute">Haute — bloquant</option></select></div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="window.openSuggestionsModal()">← Retour</button><button class="btn btn-primary" onclick="window.saveSuggestion()">Envoyer</button></div>`);
+};
+
+window.saveSuggestion=function(){
+if(!Array.isArray(D.suggestions))D.suggestions=[];
+const text=document.getElementById('mSugText').value.trim();
+if(!text){alert('Veuillez décrire votre suggestion.');return;}
+const roleLabels={admin:'Administrateur',gestionnaire:'Gestionnaire'};
+D.suggestions.push({
+id:uid(),
+date:new Date().toISOString().slice(0,10),
+text:text,
+priorite:document.getElementById('mSugPrio').value,
+auteur:ROLE,
+auteurNom:roleLabels[ROLE]||ROLE,
+statut:'nouveau',
+reponse:''
+});
+save();
+window.openSuggestionsModal();
+};
+
+window.markSuggestion=function(id,statut){
+const s=(D.suggestions||[]).find(x=>x.id===id);
+if(s){s.statut=statut;save();window.openSuggestionsModal();}
+};
+
+window.deleteSuggestion=function(id){
+if(!confirm('Supprimer cette suggestion ?'))return;
+D.suggestions=D.suggestions.filter(x=>x.id!==id);
+save();window.openSuggestionsModal();
+};
+
+window.replyToSuggestion=function(id){
+const s=(D.suggestions||[]).find(x=>x.id===id);
+if(!s)return;
+openModal(`<h3>💬 Répondre à la suggestion</h3>
+<div style="padding:12px;background:var(--bg3);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--tx2)">${s.text}</div>
+<div class="form-group"><label>Réponse</label><textarea id="mSugReply" placeholder="Votre réponse..."></textarea></div>
+<div class="modal-actions"><button class="btn btn-secondary" onclick="window.openSuggestionsModal()">← Retour</button><button class="btn btn-primary" onclick="window.saveReply('${id}')">Envoyer</button></div>`);
+};
+
+window.saveReply=function(id){
+const s=(D.suggestions||[]).find(x=>x.id===id);
+if(!s)return;
+s.reponse=document.getElementById('mSugReply').value.trim();
+if(s.statut==='nouveau')s.statut='lu';
+save();window.openSuggestionsModal();
+};
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
 
 function ensureData(d){
@@ -479,8 +574,9 @@ if(!d.contacts)d.contacts=[];
 if(!d.ghRecap)d.ghRecap=[];
 if(!d.budget)d.budget={previsionnel:2135063,consomme:1537460};
 if(!d.lastBackup)d.lastBackup='';
+if(!d.suggestions)d.suggestions=[];
 // Ensure arrays
-['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts','ghRecap'].forEach(k=>{
+['copros','mouvements','charges','fournisseurs','tickets','travaux','ags','documents','rappels','dismissedAlerts','bankAccounts','contacts','ghRecap','suggestions'].forEach(k=>{
 if(!Array.isArray(d[k]))d[k]=Object.values(d[k]||{});
 });
 // Ensure copro.actions arrays (Firestore converts nested arrays to objects)
@@ -539,9 +635,8 @@ badge.style.color=textColors[ROLE]||'';
 }
 // Admin only: import JSON, settings/reset
 ['btnImportJSON','btnSettings'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
-// Admin + Gestionnaire: exports button
-const btnExp=document.getElementById('btnExports');
-if(btnExp)btnExp.style.display=isMembre?'none':'';
+// Admin + Gestionnaire: exports + suggestions buttons
+['btnExports','btnSuggestions'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isMembre?'none':'';});
 }
 updateRoleUI();
 
