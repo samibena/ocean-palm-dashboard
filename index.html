@@ -426,8 +426,9 @@ const openAccs=new Set();
 let sortStates={};
 let charts={};
 
-const APP_VERSION='3.2';
+const APP_VERSION='3.3';
 const CHANGELOG=[
+{v:'3.3',date:'02/04/2026',type:'minor',changes:['Fiches fournisseurs cliquables avec détails complets','Historique des dépenses par fournisseur','Contact associé affiché automatiquement','Statut contrat (actif/expire bientôt/expiré)','Bouton action contextuel selon le rôle']},
 {v:'3.2',date:'02/04/2026',type:'minor',changes:['Système de suggestions d\'amélioration (Admin + Gestionnaire)','Bouton 💡 dans la topbar','Gestion des suggestions : nouveau, lu, traité','Réponses admin aux suggestions']},
 {v:'3.1',date:'02/04/2026',type:'minor',changes:['Sections expandables (GH Recap, Budget, Alertes)','Fix détection mot de passe Chrome','Numéro de version dynamique dans la topbar','Changelog accessible par clic sur la version']},
 {v:'3.0',date:'02/04/2026',type:'major',changes:['Fiches copropriétaires avec historique d\'actions (timeline)','Suivi budgétaire 2026 dynamique (budget vs réel par poste)','Types d\'actions : Appel, Relance, Mise en demeure, Paiement, etc.','Mise à jour auto du statut procédure selon les actions']},
@@ -1756,7 +1757,7 @@ else if(f.paiementStatut==='partiel'){tagClass='tag-orange';tagText='Partiel';}
 const contratExpire=f.contratFin&&new Date(f.contratFin)<new Date();
 const contratBientot=f.contratFin&&!contratExpire&&new Date(f.contratFin)<new Date(Date.now()+30*86400000);
 return`<tr>
-<td style="font-weight:600;color:var(--tx)">${f.name}</td>
+<td style="font-weight:600;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="window.openFournFiche('${f.id}')">${f.name}</td>
 <td style="font-size:12px">${f.specialite||'-'}</td>
 <td style="font-weight:700;color:${du>0?'var(--red)':'var(--tx3)'}">${du>0?fmt(du)+' MAD':'-'}</td>
 <td style="color:var(--grn)">${paye>0?fmt(paye)+' MAD':'-'}</td>
@@ -1805,6 +1806,63 @@ D.fournisseurs[idx].paiementStatut=document.getElementById('mFPStatut').value;
 D.fournisseurs[idx].dernierPaiement=document.getElementById('mFPDate').value;
 D.fournisseurs[idx].commentairePaiement=document.getElementById('mFPComm').value;
 save();closeModal();renderAll();
+};
+
+// ---- FICHE FOURNISSEUR ----
+window.openFournFiche=function(id){
+const f=(Array.isArray(D.fournisseurs)?D.fournisseurs:[]).find(x=>x.id===id);
+if(!f)return;
+const du=f.montantDu||0;
+const paye=f.montantPaye||0;
+const statutTag=f.paiementStatut==='a_jour'?'tag-green':f.paiementStatut==='partiel'?'tag-orange':'tag-red';
+const statutText=f.paiementStatut==='a_jour'?'À jour':f.paiementStatut==='partiel'?'Partiel':'En retard';
+const contratExpire=f.contratFin&&new Date(f.contratFin)<new Date();
+const contratBientot=f.contratFin&&!contratExpire&&new Date(f.contratFin)<new Date(Date.now()+30*86400000);
+const contratStatut=contratExpire?'<span style="color:var(--red);font-weight:600">Expiré ⚠️</span>':contratBientot?'<span style="color:var(--ora);font-weight:600">Expire bientôt ⏰</span>':f.contratFin?'<span style="color:var(--grn)">Actif</span>':'<span style="color:var(--tx3)">Non renseigné</span>';
+
+// Get related charges
+const charges=Array.isArray(D.charges)?D.charges:[];
+const fournCharges=charges.filter(c=>(c.fournisseur||'').toLowerCase()===f.name.toLowerCase()).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+const totalCharges=fournCharges.reduce((s,c)=>s+(c.montant||0),0);
+
+const chargesHtml=fournCharges.length?`<div class="tbl-wrap" style="margin-top:8px"><table style="font-size:12px">
+<thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th>Montant</th><th>Statut</th></tr></thead>
+<tbody>${fournCharges.map(c=>`<tr>
+<td>${c.date||'-'}</td><td>${c.categorie||'-'}</td><td>${c.desc||'-'}</td>
+<td style="font-weight:600">${fmt(c.montant)}</td>
+<td><span class="tag ${c.statut==='payee'?'tag-green':c.statut==='en_attente'?'tag-orange':'tag-red'}">${c.statut==='payee'?'Payée':c.statut==='en_attente'?'En attente':'En retard'}</span></td>
+</tr>`).join('')}</tbody>
+</table></div>`:'<p style="color:var(--tx3);font-size:12px;padding:8px">Aucune dépense enregistrée.</p>';
+
+// Get related tickets
+const tickets=Array.isArray(D.tickets)?D.tickets:[];
+const fournTickets=tickets.filter(t=>(t.assigne||'').toLowerCase().includes(f.name.toLowerCase())||(t.commentaires||'').toLowerCase().includes(f.name.toLowerCase()));
+
+// Contact info
+const contact=(Array.isArray(D.contacts)?D.contacts:[]).find(c=>(c.organisme||'').toLowerCase()===f.name.toLowerCase());
+const contactHtml=contact?`<div style="font-size:12px;color:var(--tx2);margin-top:8px">
+👤 <strong>${contact.nom}${contact.prenom?' '+contact.prenom:''}</strong> — ${contact.fonction||''}
+${contact.tel?` · <a href="tel:${contact.tel.replace(/\\s/g,'')}" style="color:var(--acc)">${contact.tel}</a>`:''}
+${contact.email?` · <a href="mailto:${contact.email}" style="color:var(--acc)">${contact.email}</a>`:''}
+</div>`:'';
+
+const editBtn=isAdmin?`<button class="btn btn-sm btn-secondary" onclick="window.editFourn('${f.id}')">✏️ Modifier</button>`:isGest?`<button class="btn btn-sm btn-secondary" onclick="window.editFournPaiement('${f.id}')">💰 Paiement</button>`:'';
+
+openModal(`<h3 style="display:flex;justify-content:space-between;align-items:center">🏢 ${f.name} <span class="tag ${statutTag}">${statutText}</span></h3>
+<p style="font-size:13px;color:var(--tx2);margin-bottom:16px">${f.specialite||''}</p>
+${contactHtml}
+<div class="fiche-header" style="margin-top:16px">
+<div class="fiche-stat"><div class="fiche-stat-label">Montant dû</div><div class="fiche-stat-val" style="color:${du>0?'var(--red)':'var(--grn)'}"><span style="font-size:20px">${fmt(du)}</span> MAD</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Montant payé</div><div class="fiche-stat-val" style="color:var(--grn);font-size:20px">${fmt(paye)} MAD</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Contrat annuel</div><div class="fiche-stat-val" style="font-size:16px">${f.contratMontant?fmt(f.contratMontant)+' MAD':'-'}</div></div>
+<div class="fiche-stat"><div class="fiche-stat-label">Fin contrat</div><div class="fiche-stat-val" style="font-size:14px">${f.contratFin||'-'} ${contratStatut}</div></div>
+</div>
+${f.dernierPaiement?`<p style="font-size:12px;color:var(--tx3);margin-bottom:4px">Dernier paiement : ${f.dernierPaiement}</p>`:''}
+${f.commentairePaiement?`<div style="font-size:12px;color:var(--tx2);padding:10px;background:var(--bg3);border-radius:6px;margin:8px 0">💬 ${f.commentairePaiement}</div>`:''}
+${f.note?`<p style="font-size:12px;margin:8px 0">Note : ${'⭐'.repeat(f.note)}${'☆'.repeat(5-f.note)}</p>`:''}
+<h3 style="font-size:14px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bdr)">Historique des dépenses <span style="font-size:12px;font-weight:400;color:var(--tx3)">(${fournCharges.length} · ${fmt(totalCharges)} MAD)</span></h3>
+${chargesHtml}
+<div class="modal-actions">${editBtn}<button class="btn btn-secondary" onclick="closeModal()">Fermer</button></div>`);
 };
 window.saveFourn=function(eid){
 if(!Array.isArray(D.fournisseurs))D.fournisseurs=[];
